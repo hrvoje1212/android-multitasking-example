@@ -1,4 +1,4 @@
-package com.hkozak.multitaskingexample;
+package com.hkozak.multitaskingexample.dekker;
 
 import android.os.Looper;
 import android.util.Log;

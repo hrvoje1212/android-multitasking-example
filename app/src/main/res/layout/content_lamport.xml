@@ -9,8 +9,8 @@
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
     app:layout_behavior="@string/appbar_scrolling_view_behavior"
-    tools:context="com.hkozak.multitaskingexample.dekker.DekkerActivity"
-    tools:showIn="@layout/activity_dekker">
+    tools:context="com.hkozak.multitaskingexample.lamport.LamportActivity"
+    tools:showIn="@layout/activity_lamport">
 
     <ScrollView
         android:layout_width="match_parent"
@@ -19,6 +19,6 @@
             android:id="@+id/output_text"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Welcome to dekker example!" />
+            android:text="Welcome to Lamport example!" />
     </ScrollView>
 </RelativeLayout>

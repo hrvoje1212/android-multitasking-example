@@ -10,6 +10,7 @@ import android.view.MenuItem;
 import android.widget.Button;
 
 import com.hkozak.multitaskingexample.dekker.DekkerActivity;
+import com.hkozak.multitaskingexample.lamport.LamportActivity;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -26,6 +27,15 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 startActivity(new Intent(MainActivity.this, DekkerActivity.class));
+            }
+        });
+
+        Button lamportButton = (Button) findViewById(R.id.button_lamport);
+
+        lamportButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startActivity(new Intent(MainActivity.this, LamportActivity.class));
             }
         });
     }

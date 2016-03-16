@@ -18,13 +18,20 @@
 
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
 
             <Button
                 android:id="@+id/button_dekker"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="Dekker Example"/>
+
+            <Button
+                android:id="@+id/button_lamport"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Lamport Example"/>
 
         </LinearLayout>
     </ScrollView>

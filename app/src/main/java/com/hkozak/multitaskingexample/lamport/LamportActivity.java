@@ -11,36 +11,45 @@ import android.widget.TextView;
 import com.hkozak.multitaskingexample.R;
 import com.hkozak.multitaskingexample.dekker.DekkerRunnable;
 
+import butterknife.Bind;
+import butterknife.ButterKnife;
+
 public class LamportActivity extends AppCompatActivity {
+
+    @Bind(R.id.fab)
+    FloatingActionButton fab;
+    @Bind(R.id.toolbar)
+    Toolbar toolbar;
+    @Bind(R.id.output_text)
+    TextView outputTextView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_lamport);
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+
+        ButterKnife.bind(this);
+
         setSupportActionBar(toolbar);
 
-        final TextView textView = (TextView) findViewById(R.id.output_text);
-
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 Snackbar.make(view, "Threads starting", Snackbar.LENGTH_LONG)
                         .setAction("Action", null).show();
 
-                textView.setText("");
+                outputTextView.setText("");
 
                 for (int i = 0; i < LamportRunnable.tables.length; i++)
                     LamportRunnable.tables[i] = -1;
 
-                Thread thread0 = new Thread(new LamportRunnable(0, textView));
+                Thread thread0 = new Thread(new LamportRunnable(0, outputTextView));
                 thread0.start();
 
-                Thread thread1 = new Thread(new LamportRunnable(1, textView));
+                Thread thread1 = new Thread(new LamportRunnable(1, outputTextView));
                 thread1.start();
 
-                Thread thread2 = new Thread(new LamportRunnable(2, textView));
+                Thread thread2 = new Thread(new LamportRunnable(2, outputTextView));
                 thread2.start();
             }
         });

@@ -33,6 +33,12 @@
                 android:layout_height="wrap_content"
                 android:text="Lamport Example"/>
 
+            <Button
+                android:id="@+id/button_paging"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Paging Example"/>
+
         </LinearLayout>
     </ScrollView>
 </RelativeLayout>

@@ -11,9 +11,11 @@ import android.widget.Button;
 
 import com.hkozak.multitaskingexample.dekker.DekkerActivity;
 import com.hkozak.multitaskingexample.lamport.LamportActivity;
+import com.hkozak.multitaskingexample.paging.PagingActivity;
 
 import butterknife.Bind;
 import butterknife.ButterKnife;
+import butterknife.OnClick;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -48,6 +50,11 @@ public class MainActivity extends AppCompatActivity {
                 startActivity(new Intent(MainActivity.this, LamportActivity.class));
             }
         });
+    }
+
+    @OnClick(R.id.button_paging)
+    public void startPagingActivity() {
+        startActivity(new Intent(MainActivity.this, PagingActivity.class));
     }
 
     @Override

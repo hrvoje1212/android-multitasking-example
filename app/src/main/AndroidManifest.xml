@@ -25,7 +25,12 @@
         <activity
             android:name=".lamport.LamportActivity"
             android:label="@string/title_activity_lamport"
-            android:theme="@style/AppTheme.NoActionBar"></activity>
+            android:theme="@style/AppTheme.NoActionBar" />
+        <activity
+            android:name=".paging.PagingActivity"
+            android:label="@string/title_activity_paging"
+            android:theme="@style/AppTheme.NoActionBar"/>
+
     </application>
 
 </manifest>

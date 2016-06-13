@@ -11,17 +11,31 @@ import android.widget.Button;
 
 import com.hkozak.multitaskingexample.dekker.DekkerActivity;
 import com.hkozak.multitaskingexample.lamport.LamportActivity;
+import com.hkozak.multitaskingexample.paging.PagingActivity;
+
+import butterknife.Bind;
+import butterknife.ButterKnife;
+import butterknife.OnClick;
 
 public class MainActivity extends AppCompatActivity {
+
+    @Bind(R.id.button_dekker)
+    Button dekkerButton;
+    @Bind(R.id.button_lamport)
+    Button lamportButton;
+    @Bind(R.id.button_paging)
+    Button pagingButton;
+    @Bind(R.id.toolbar)
+    Toolbar toolbar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
 
-        Button dekkerButton = (Button) findViewById(R.id.button_dekker);
+        ButterKnife.bind(this);
+
+        setSupportActionBar(toolbar);
 
         dekkerButton.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -30,14 +44,17 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
-        Button lamportButton = (Button) findViewById(R.id.button_lamport);
-
         lamportButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 startActivity(new Intent(MainActivity.this, LamportActivity.class));
             }
         });
+    }
+
+    @OnClick(R.id.button_paging)
+    public void startPagingActivity() {
+        startActivity(new Intent(MainActivity.this, PagingActivity.class));
     }
 
     @Override

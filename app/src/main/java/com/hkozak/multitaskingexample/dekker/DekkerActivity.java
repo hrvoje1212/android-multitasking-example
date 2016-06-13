@@ -10,31 +10,39 @@ import android.widget.TextView;
 
 import com.hkozak.multitaskingexample.R;
 
+import butterknife.Bind;
+import butterknife.ButterKnife;
+
 public class DekkerActivity extends AppCompatActivity {
+
+    @Bind(R.id.fab)
+    FloatingActionButton fab;
+    @Bind(R.id.toolbar)
+    Toolbar toolbar;
+    @Bind(R.id.output_text)
+    TextView outputTextView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_dekker);
-        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
+
+        ButterKnife.bind(this);
+
         setSupportActionBar(toolbar);
 
-
-        final TextView textView = (TextView) findViewById(R.id.output_text);
-
-        FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 Snackbar.make(view, "Threads starting", Snackbar.LENGTH_LONG)
                         .setAction("Action", null).show();
 
-                textView.setText("");
+                outputTextView.setText("");
 
-                Thread thread1 = new Thread(new DekkerRunnable(0, textView));
+                Thread thread1 = new Thread(new DekkerRunnable(0, outputTextView));
                 thread1.start();
 
-                Thread thread2 = new Thread(new DekkerRunnable(1, textView));
+                Thread thread2 = new Thread(new DekkerRunnable(1, outputTextView));
                 thread2.start();
             }
         });

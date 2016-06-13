@@ -11,6 +11,7 @@
 # Generated files
 bin/
 gen/
+*~
 
 # Gradle files
 .gradle/
@@ -23,7 +24,6 @@ proguard/
 
 # Log Files
 *.log
-<<<<<<< HEAD
 
 # Android Studio Navigation editor temp files
 .navigation/
@@ -36,3 +36,27 @@ gen-external-apklibs
 .idea
 .gradle
 build/
+
+### LaTeX ###
+## Core latex/pdflatex auxiliary files:
+*.aux
+*.lof
+*.log
+*.lot
+*.fls
+*.out
+*.toc
+*.fmt
+*.fot
+*.cb
+*.cb2
+*.synctex.gz
+
+## Intermediate documents:
+*.dvi
+*-converted-to.*
+# these rules might exclude image files for figures etc.
+# *.ps
+# *.eps
+*.pdf
+

@@ -1,5 +1,6 @@
 \documentclass[times, utf8, zavrsni]{fer}
 \usepackage{booktabs}
+\usepackage{listings}
 
 \begin{document}
 
@@ -230,11 +231,11 @@ i ovdje nam je bitno raspoznati dvije stvari:
 
 
 \paragraph{•}
-Privatni čisti i prljavi radni spremnik \textit{(engl. Private Clean and Dirty RAM)}\\
+\textbf{Privatni čisti i prljavi radni spremnik} \textit{(engl. Private Clean and Dirty RAM)}\\
 Ovo je količina memorije koju koristi naš proces i to je onaj dio memorije koji sustav može dobiti nazad nakon uništavanja istog. Ovdje je najbitnije gledati prljavi dio radnog spremnika, koji je ujedno i najskuplji, jer se tim djelom koristi samo naš process i ne može se straničiti na disk.
 
 \paragraph{•}
-Proporcionalna veličina skupa \textit{(engl. Proportional Set Size, PSS)}\\
+\textbf{Proporcionalna veličina skupa} \textit{(engl. Proportional Set Size, PSS)}\\
 Ovo je količina memorije koju koristi naša aplikacija uzimajući u obzir dijeljenje stranica kroz više procesa. Svaka stranica koja je jedinstvena za naš process direktno pridonosi ovoj vrijednosti, dok ostale stranice koje se dijele s drugim procesima doprinose proporcionalnu vrijednost dijela kojeg zauzimaju.
 
 \subsection{Korištenje više procesa}
@@ -277,6 +278,105 @@ Može se primijetiti da veličina nije baš zanemariva, i isto tako brzo i raste
 Ovime dolazimo do konkretnog zaključka, ako već moramo podijeliti aplikaciju u procese, isključovo jedan process mora biti zadužen za UI, a ostali moraju izbjegavati bilo kakvo korištenje UI elemenata, jer u suprotnom ćemo napuniti memoriju u kratkom roku.\\
 
 Dodatno pošto se aplikacija vrti u više procesa mora se puno više fokusa uložiti u optimizaciju korištenja memorije u kodu jer se u ovom slučaju svaki propust replicira na druge procese i stvara sve veći problem.
+
+\pagebreak
+\chapter{Procesi i dretve}
+\section{Uvod}
+\paragraph{}
+Pri pokretanju nove aplikacije, ako aplikacija nema niti jednu komponentu već pokrenutu, Android će pokrenuti novi Linux proces za tu aplikaciju s jednom dretvom. Po pravilu, sve komponente iste aplikacije pokreću se u istom procesu i dretvi -glavna dretva \textit{(engl. main thread)}. Ako prilikom pokretanja neke komponente već postoji proces koji je zadužen za tu aplikaciju (jer postoji neka druga komponenta koja je već pokrenuta) onda se nova komponenta pokreće unutar toga procesa i koristi istu dretvu za izvršavanje. Naravno, ako želimo, možemo svaku komponentu specifično izdvojiti u drugi proces ili napraviti više dretvi za bilo koji proces.
+
+\section{Procesi}
+\paragraph{}
+Iako su sve komponente po pravilu pokrenute u istom procesu (i to se u većini slučajeva ne bi trebalo mijenjati), mi imamo potpunu kontrolu nad njima i može se lako promijeniti proces kojem će komponenta pripadati. To se radi u \textit{AndroidManifest.xml} datoteci. Svaki unos elementa android komponente u \textit{manifestu} - \verb|<activity>,| \verb|<service>, <receiver>, <provider>| - sadrži atribut \textit{android:process} gdje možemo specificirati ime procesa u kojem će komponenta živjeti.
+
+\begin{figure}[ht!]
+\centering
+\begingroup
+    \fontsize{10pt}{12pt}\selectfont
+		\begin{verbatim}
+        <activity android:icon="drawable resource"
+            android:label="string resource"
+            android:name="string"
+          	    . . .
+            android:process="string"
+          	    . . .
+        </activity>
+		\end{verbatim}
+\endgroup
+%\includegraphics[width=120mm]{img/example.png}
+\caption{\textit{Activity} element unutar AndroidManifest.xml.}
+\label{overflow}
+\end{figure}
+
+Isto tako, \verb|| element podržava \textit{android:process} atribut koji onda postavlja unaprijed zadanu \textit{(engl. default)} vrijednost za sve komponente aplikacije. Unaprijed zadano ime procesa odgovara imenu paketa aplikacije koje je određeno u \textit{manifestu}.\\
+
+Ako ime procesa počinje s dvotočkom \textit{(':')}, novi privatan proces za aplikaciju stvara se tek onda kada je potreban i komponenta se pokrene unutar njega. U slučaju da ime procesa započinje malim slovom, \textit{activity} će se pokrenuti u globalnom procesu tog imena ako ima ovlasti za to. Ovime se omogućuje komponentama iz različitih aplikacija da dijele procese, te smanjujemo potrošnju resursa.\\
+
+Android se u bilo kojem trenutku može odlučiti ubiti proces, kad je memorija pri kraju, a drugi procesi koji su trenutačno važniji za posluživanje korisnika ju zahtijevaju. U tom slučaju komponenta aplikacije bude uništena skupa s procesom, i oni se ponovno pokreću kada se to od njih bude tražilo.
+
+
+\subsection{Život procesa}
+\paragraph{}
+Android ima u cilju što duže zadržati proces aplikacije živim, dok ga eventualno ne uništi kako bi oslobodio memoriju za nove ili važnije procese. Za takvu vrstu odluke procesi se stavljaju u hijerarhiju po važnosti. Ta hijerarhija bazirana je na pokrenutim komponentama u procesu i njihovom trenutnom stanju, te se onda postepeno izbacuju procesi od najmanje važnosti.\\
+
+Postoji pet stupnjeva \textit{hijerarhije po važnosti}. U sljedećoj listi prikazani su različiti tipovi procesa po važnosti (prvi je najvažniji, odnosno zadnji se ubija):
+
+\begin{enumerate}
+\item
+\textbf{Proces u prvom planu} \textit{(engl. Foreground process)}\\
+Proces koji je potreban za ono što korisnik trenutno radi i vidi. Smatra se da je proces u prvom planu ako je ispunjen jedan od slučajeva:
+	\begin{itemize}
+	\item sadrži \textit{activity} s kojim korisnik komunicira – pozvana \textit{onResume()} metoda nad \textit{activity-em}
+	\item sadrži servis koji je povezan s \textit{activity-em} s kojim korisnik komunicira
+	\item sadrži servis koji je pokrenut u prvom planu – pozvana \textit{startForeground()} metoda servisa
+	\item sadrži servis koji pokreće jedan od svojih glavnih ugrađenih poziva – \textit{onCreate(), onStart() ili onDestroy()}
+	\item sadrži \textit{BroadcastReceiver} koji trenutno izvršava \textit{onReceive()} metodu
+	\end{itemize}
+Realno će  u bilo kojem danom trenutku biti svega par takvih procesa upaljenih i njihovo se ubijanje smatra zadnjom opcijom, a to je kada nema dovoljno memorije da se svi izvršavaju odjednom. U tom trenutku uređaj je u stanju straničenja memorije, pa je ubijanje ovih procesa potrebno kako bi održali UI responzivnim.	
+	
+\item
+\textbf{Vidljivi procesi}\\
+Proces je vidljiv ako nema nijednu komponentu u prvom planu, ali utječe na ono što korisnik vidi na ekranu. Smatra se da je proces vidljiv ako je ispunjen jedan od slučajeva:
+	\begin{itemize}
+	\item sadrži \textit{activity} koji nije u prvom planu, ali je vidljiv korisniku – pozvana \textit{onPause()} metoda (npr. kad se otvori dijalog, roditeljski \textit{activity} je još uvijek vidljiv ispod njega)
+	\item sadrži servis koji je vezan za vidljivi ili \textit{activity} u prvom planu
+	\end{itemize}
+Ovakav se proces smatra iznimno važnim i neće se dirati ako to nije potrebno da bi procesi u prvom planu preživjeli.
+
+\item
+\textbf{Proces Servisa}\\
+Proces koji ima pokrenut servis sa \textit{startService()} metodom i koji nije pripadnik prve dvije kategorije.\\
+Iako servisi inače nisu direktno povezani s onime što korisnik vidi, oni rade stvari koje su bitne za krajnjeg korisnika (npr. puštanje muzike u pozadini) tako da ih Android drži živima dok ima dovoljno memorije da prežive i procesi u prvom planu i svi vidljivi procesi.
+
+\item
+\textbf{Proces u pozadini}\\
+Proces koji sadrži \textit{activity} koji trenutno nije vidljiv korisniku – pozvana je\linebreak \textit{onStop()} metoda.\\
+Takvi procesi nemaju nikakav utjecaj na UX, tako da ih Android u bilo kojem trenutku može ubiti s ciljem oslobađanja memorije. Realno u bilo kojem danom trenutku biti će puno procesa koji se izvode u pozadini, i oni se spremaju u LRU priručnu memoriju kako bi se osiguralo pravedno uništavanje aplikacija po prioritetu najmanjeg korištenja istih.
+
+\pagebreak
+\item
+\textbf{Prazan proces}\\
+Proces koji ne sadrži niti jednu aktivnu komponentu aplikacije.\\
+Jedini razlog da bi uopće postojao ovakav proces je zbog korištenja priručne memorije i bržeg pokretanja komponenti koje će se unutar ovog procesa pokretati u budućnosti.
+
+\end{enumerate}
+
+Tijekom rangiranja procesa Android će uzeti najveći mogući stupanj hijerarhije koji je zadovoljen. Ako proces sadrži i servis i vidljivi \textit{activity}, biti će rangiran kao vidljivi proces, a ne kao proces servisa.\\
+
+Isto tako, proces može biti promaknut ako postoji neki drugi proces koji ovisi o njemu – jer proces ne smije biti manje rangiran od procesa kojeg poslužuje. Dobar primjer za to daju \textit{ContentProvider} klase ili servisi koji su vezani za neku komponentu u drugom procesu.\\
+
+Može se primijetiti da je proces servisa više rangiran od procesa u pozadini, tako da ako u aplikaciji radimo neki posao koji ima veće trajanje nego obično (npr. upload datoteke) najbolje je da sav posao prebacimo u novi servis nego da ga odrađujemo na radnoj dretvi \textit{(engl. worker thread)}. Time dobivamo sigurnost da će proces biti rangiran kao proces servisa, bez obzira na to što se dogodi sa \textit{activity-em}. Iz istog razloga je i dobra praksa u \textit{BroadcastReceiver} klasi uposliti servise umjesto da opterećujemo dretvu.
+
+\subsection{Komunikacija između procesa}
+\paragraph{}
+Za komunikaciju između različitih procesa Android koristi RPC pozive \textit{(engl. Remote Procedure Call, RPC)}, gdje poziva metodu iz \textit{activityj-a} ili neke druge komponente aplikacije i ista se izvršava u drugom procesu, te nakon izvršavanja vraća rezultat pozivatelju. Na ovaj se način poziv metode rastavlja na nivo operacijskog sustava i prenosi se iz lokalnog procesa i adresnog prostora na drugi proces i njegov adresni prostor te tamo izvršava naredbe pozvane metode i vraća rezultat na isti način u drugom smjeru. Android rješava sav kod za transakcije komunikacije između procesa \textit{(engl. Interprocess Communication, IPC)} tako da je sve što se treba napraviti definicija i implementacija RPC sučelja (engl. interface).\\
+
+Kako bi obavili IPC komunikaciju, aplikacija se mora vezati za servis metodom \textit{bindService()} koja vraća klijent-server sučelje preko kojeg komponente aplikacije komuniciraju sa servisom. Takav povezani servis \textit{(engl. Bound Service)} živi sve dok ima neku komponentu bilo koje druge aplikacije povezanu na sebe. Pošto je moguće spojiti više komponenata odjednom na jedan takav servis, u trenutku kada se sve komponente odspoje, servis će se uništiti. Na ovaj način otvaramo dostupnost djela funkcionalnosti naše aplikacije ostalim aplikacijama preko IPC komunikacije.\\
+
+Da bi kreirali vezani servis, mora se implementirati \textit{onBind()} metoda ugrađenog poziva gdje se vraća \textit{IBinder} koji služi kao sučelje za komunikaciju sa samim servisom. Nakon toga ostale se komponente mogu jednostavno spojiti na servis pozivajući \textit{bindService()} metode nakon čega dobivaju sučelje preko kojega mogu početi pozive metoda na servisu. Kako se operacijski sustav brine za uništavanje vezanih servisa kada ne postoji niti jedna komponenta vezana za njega, znači da nije potrebno ručno zaustavljanje ovakvog servisa.
+ 
+\section{Dretve}
+\paragraph{}
 
 
 \chapter{Zaključak}

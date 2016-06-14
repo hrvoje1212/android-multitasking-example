@@ -1,6 +1,28 @@
 \documentclass[times, utf8, zavrsni]{fer}
 \usepackage{booktabs}
 \usepackage{listings}
+\usepackage{color}
+
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
+
+\lstset{frame=tb,
+  language=Java,
+  aboveskip=3mm,
+  belowskip=3mm,
+  showstringspaces=false,
+  columns=flexible,
+  basicstyle={\small\ttfamily},
+  numbers=none,
+  numberstyle=\tiny\color{gray},
+  keywordstyle=\color{blue},
+  commentstyle=\color{dkgreen},
+  stringstyle=\color{mauve},
+  breaklines=true,
+  breakatwhitespace=true,
+  tabsize=3
+}
 
 \begin{document}
 
@@ -293,7 +315,7 @@ Iako su sve komponente po pravilu pokrenute u istom procesu (i to se u većini s
 \centering
 \begingroup
     \fontsize{10pt}{12pt}\selectfont
-		\begin{verbatim}
+		\begin{lstlisting}
         <activity android:icon="drawable resource"
             android:label="string resource"
             android:name="string"
@@ -301,7 +323,7 @@ Iako su sve komponente po pravilu pokrenute u istom procesu (i to se u većini s
             android:process="string"
           	    . . .
         </activity>
-		\end{verbatim}
+		\end{lstlisting}
 \endgroup
 %\includegraphics[width=120mm]{img/example.png}
 \caption{\textit{Activity} element unutar AndroidManifest.xml.}
@@ -377,6 +399,41 @@ Da bi kreirali vezani servis, mora se implementirati \textit{onBind()} metoda ug
  
 \section{Dretve}
 \paragraph{}
+Pri pokretanju aplikacije, sustav kreira glavnu dretvu odgovornu za izvršavanje\linebreak programa pod nazivom "glavna dretva" \textit{(engl. main thread)}. Ova dretva je praktički najvažnija u cijeloj aplikaciji jer delegira slanje svih događaja \textit{(engl. event)} na odgovarajuće elemente grafičkog sučelja \textit{(engl. User Interface, UI)}, uključujući i događaje vezane za crtanje. Također u toj se dretvi odvija interakcija s ostalim komponentama iz \textit{Android UI toolkit} paketa, te kao takva, glavna se dretva ponekad naziva i "UI" dretva.\\
+
+Sve komponente aplikacije koje se vrte u istom procesu pokreću se na UI dretvi i sustav nikada ne kreira nove dretve za svaku instancu komponente. Isto tako i sistemski pozivi aplikacije, kao i metode za odgovor na sistemski ugrađeni poziv uvijek se pokreću na UI dretvi procesa. Na primjer, kada korisnik pritisne gumb na ekranu, aplikacija šalje događaj dodira elementu, nakon čega se isti postavi u kliknuto stanje, te invalidira događaj u redu događaja \textit{(engl. event queue)}. Nakon toga UI dretva miče događaj iz reda i obavještava element da se promijenio i da se mora ponovno nacrtati.\\
+
+Ovakav jednodretveni model ima i jednu jako veliku manu. U slučaju da aplikacija obrađuje jako veliku količinu posla kao rezultat neke akcije od strane korisnika, to može rezultirati jako lošim performansama aplikacije ako se to napravi na krivi način. Kada bi se sav taj posao odrađivao na UI dretvi, ona bi automatski postala blokirana dok se posao ne obavi do kraja, što bi značilo nemogućnost slanja nikakvih daljnjih događaja, uključujući i one za crtanje. Gledajući iz perspektive korisnika, aplikacija će se smrznut i prestati reagirati, a ukoliko bude smrznuta više od 5 sekundi, Android će pokazati korisniku poznati \textit{"application not responding" (ANR)} dijalog. Korisnik se tada može odlučiti na ubijanje aplikacije i pobrisati ju s uređaja ako je nezadovoljan istom. Ovakva situacija bi se svakako trebala izbjeći pod svaku cijenu.\\
+
+Još jedan jako bitan detalj je da \textit{Android UI toolkit} nije dretveno osiguran \textit{(engl. thread-safe)}, što bi značilo da se njegovi elementi ne mogu mijenjati iz više dretvi istovremeno. Iz tog se razloga ne smije manipulirati UI elementima iz druge dretve, već se sva manipulacija na UI elementima radi na UI dretvi.\\
+
+Iz ovog osnovnog pogleda na dretve u Androidu okruženju izašla su dva zlatna pravila za ovakav jednodretveni model kojih bi se svatko trebao držati:
+
+\begin{enumerate}
+\item Nikada ne blokirati UI dretvu
+\item Nikada ne pristupati \textit{Android UI toolkit} elementima od izvana UI dretve
+\end{enumerate}
+
+\subsection{Radna dretva}
+\paragraph{}
+Poštujući prvo pravilo jako je bitno ne blokirati UI dretvu zbog responzivnosti cijele aplikacije. Ukoliko dođe situacija da neki posao nije moguće odmah izvršiti, već je potrebno neko vrijeme za to (npr. dohvaćanje slike sa interneta), takvu stvar moramo staviti u posebnu dretvu - "pozadinska" \textit{(engl. background thread)}  ili "radna" dretva \textit{(engl. worker thread)}.\newpage
+Ovo je primjer kako u slušatelju za događaj klika \textit{(engl. click listener)} dohvaćamo sliku s interneta na radnoj dretvi i prikazujemo ju u \textit{ImageView}:
+
+\begin{figure}[ht!]
+%\includegraphics[width=140mm]{img/android-debug-monitor.png}
+\begin{lstlisting}
+public void onClick(View v) {
+    new Thread(new Runnable() {
+        public void run() {
+            Bitmap bitmap = loadImageFromNetwork("http://example.com/image.png");
+            mImageView.setImageBitmap(b);
+        }
+    }).start();
+}
+\end{lstlisting}
+\caption{Dohvaćanje slike u radnoj dretvi.}
+\label{overflow}
+\end{figure}
 
 
 \chapter{Zaključak}

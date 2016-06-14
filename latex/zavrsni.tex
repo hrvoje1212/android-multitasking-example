@@ -476,12 +476,103 @@ Isto tako može se vidjeti da kako se povećava kompleksnost operacija, ovakvo r
 
 \subsection{klasa \textit{AsyncTask}}
 \paragraph{}
-Klasa \textit{AsyncTask} omogućuje i olakšava pravilno korištenje UI dretve. Ona služi za izvršavanje blokirajućih operacija u pozadini i prikazivanje rezultata na UI dretvi bez potrebe da sami manipuliramo dretvama i rukovateljima. Stoga je \textit{AsyncTask} zapravo pomoćna klasa vezana za \textit{Thread} i \textit{Handler} i nije zamišljen kao radno okruženje za baratanje dretvama. Idealno se koristi za operacije do svega par sekundi, a za sve ostale stvari koje bi se trebale duže vrtit u pozadini koriste se API koji se nalaze u java.util.concurrent paketu (npr. Executor, ThreadPoolExecutor, FutureTask).\\
+Klasa \textit{AsyncTask} omogućuje i olakšava pravilno korištenje UI dretve. Ona služi za izvršavanje blokirajućih operacija u pozadini i prikazivanje rezultata na UI dretvi bez potrebe da sami manipuliramo dretvama i rukovateljima. Stoga je \textit{AsyncTask} zapravo pomoćna klasa vezana za \textit{Thread} i \textit{Handler} i nije zamišljen kao radno okruženje za baratanje dretvama. Idealno se koristi za operacije do svega par sekundi, a za sve ostale stvari koje bi se trebale duže odrađivati u pozadini koriste se API koji se nalaze u \verb|java.util.concurrent| paketu (npr. \textit{Executor, ThreadPoolExecutor, FutureTask}).\\
 
-Svaki AsyncTask definiran je sa tri generička tipa Params, Progress i Result, i možemo ga podijeliti u 4 koraka izvršavanja onPreExecute, doInBackground, onProgressUpdate i onPostExecute.\\
+Svaki \textit{AsyncTask} definiran je s tri generička tipa \textit{Params, Progress i Result}, i dijeli se u četiri koraka izvršavanja, a to su \textit{onPreExecute(), doInBackground(), onProgressUpdate() i onPostExecute().}\\
 
-Da bi ga koristili svakako ga moramo napraviti odgovarajuću subklasu gdje ćemo implementirati doInBackground() metodu koja se zatim pokreće u pool-u dretvi u pozadini. Osvježavanje UI elemenata radimo u onPostExecute() metodi gdje dobivamo rezultat iz doInBackground() dijela i pokreće promjene na UI dretvi. Kad smo gotovi task se pokreće metodom execute().
+Pri korištenju \textit{AsyncTask} klase, prvo se radi odgovarajuća subklasa gdje se onda implementira doInBackground() metoda koja se zatim pokreće u bazenu dretvi \textit{(engl. thread pool)} u pozadini. Osvježavanje UI elemenata radi se u \textit{onPostExecute()} metodi gdje dobivamo rezultat iz \textit{doInBackground()} dijela, te pokreće promjene na UI dretvi. Nakon implementacije \textit{AsyncTask} se pokreće metodom \textit{execute()}.\\
 
+Nadalje, mora se obratiti pažnja na sljedeće stvari:
+\paragraph{•}
+Tipove parametara možemo sami specificirati pomoću generičkih tipova \textit{(engl. generics)}
+\paragraph{•}
+\textit{doInBackground()} se automatski pokreće na radnoj dretvi
+\paragraph{•}
+\textit{onPreExecute(), onPostExecute(), i onProgressUpdate()} se pokreću na UI dretvi
+\paragraph{•}
+vrijednost dobivena u \textit{doInBackground()} predaje se \textit{onPostExecute()} metodi
+\paragraph{•}
+\textit{publishProgress()} se može pozvati bilo kada u \textit{doInBackground()} kako bi se okinuo \textit{onProgressUpdate()} na UI dretvi
+\paragraph{•}
+prekid izvađanje \textit{AsyncTask} klase može se napraviti bilo kada iz bilo koje dretve\newpage
+
+\paragraph{}
+Za ilustraciju, primijenit ćemo \textit{AsyncTask} na prethodni primjer:
+
+\begin{figure}[ht!]
+%\includegraphics[width=140mm]{img/android-debug-monitor.png}
+\begin{lstlisting}
+public void onClick(View v) {
+    new DownloadImageTask().execute("http://example.com/image.png");
+}
+
+private class DownloadImageTask extends AsyncTask<String, Void, Bitmap> {
+    /** Sustav poziva ovu metodu i izvrsava u radnoj dretvi te
+      * prosljedjuje parametre dobivene u AsyncTask.execute() */
+    protected Bitmap doInBackground(String... urls) {
+        return loadImageFromNetwork(urls[0]);
+    }
+
+    /** Sustav poziva ovu metodu i izvrsava ju na UI dretvi i
+      * prosljedjuje rezultat dobiven iz doInBackground() */
+    protected void onPostExecute(Bitmap result) {
+        mImageView.setImageBitmap(result);
+    }
+}
+\end{lstlisting}
+\caption{Dohvaćanje slike pomoću \textit{AsyncTask} klase.}
+\label{overflow}
+\end{figure}
+
+Ovdje se vidi puno jednostavniji stil kodiranja, a i UI dretva je u potpunosti sigurna jer se odvaja posao koji se odrađuje na radnoj dretvi od djela koji se treba raditi na UI dretvi.\newpage
+
+\chapter{Sinkronizacijski mehanizmi}
+\section{Sinkronizacija procesa semaforima}
+\paragraph{}
+Sinkronizacija procesa se uglavnom obavlja semaforima. Ostali mehanizmi (čija primarna namjena nije sinkronizacija, poput redova poruka, cjevovoda, i sl.) rijetko se koriste za sinkronizaciju procesa.\\
+
+Semafor je mehanizam koji sprečava da dva ili više procesa pristupaju zajedničkom sredstvu istovremeno. Binarni semafor ima dva stanja: propusno i nepropusno. Opći semafor ima beskonačan broj stanja (ili barem vrlo velik). To je brojač koji se smanjuje za jedan kada se zahtijeva semafor, a povećava se za jedan kada se oslobađa. Ako je na nuli, a proces zahtijeva semafor, tada taj proces mora čekati dok drugi proces ne poveća vrijednost semafora. Semafor u UNIX-u (System V) ne može imati negativnu vrijednost iako su teoretski ostvarivi i semafori kod kojih bi bile dozvoljene i negativne vrijednosti. Upotreba semafora se obično razmatra kroz dvije jednostavne operacije: "dohvati" \textit{(engl. acquire)} i "otpusti" \textit{(engl. release)} ili "čekaj" \textit{(engl. wait)} i "postavi" \textit{(engl. signal)}.\\
+
+Android radno okruženje nudi klasu \textit{Semaphore}, tipa općeg semafora, koja zapravo konceptualno barata setom dozvola. Svaki \textit{acquire()} poziv blokira pristup ako je potrebno sve dok ne dobije dozvolu od semafora, koju potom uzima. S druge strane imamo \textit{release()} poziv koji vraća dozvolu semaforu i time potencijalno oslobađa blokiranog pozivatelja dozvole.\\
+
+Ako inicijaliziramo semafor na veličinu 1, on postaje lokot međusobnog isključivanja \textit{(engl. mutual exclusion lock)}, odnosno binarni semafor, jer ima samo dva stanja 0 ili 1 dozvola je dostupna u svakom trenutku. Kada se koristi na ovaj način, binarni semafor dobiva specifično svojstvo (za razliku od ostalih implementacija lokota \textit{(engl. Lock)}) da se može otpustiti iz bilo koje dretve koja nije vlasnik, jer semafori nemaju vlasnika. Ovo zna biti jako korisno kod oporavljanja iz stanja zapetljanih lokota \textit{(engl. deadlock)}.\\
+
+Također, konstruktor osim broja dozvola prima i \textit{fairness} parameter. Kada je postavljen na \textit{false} semafor ne garantira nikakvim poretkom kojim će dretve dobivati dozvole. To bi značilo da jedna dretva pozivom na \textit{acquire()} može dobiti dozvolu prije dretve koja već čeka na istu. Kada je postavljen na \textit{true} semafor garantira točan poredak dobivanja dozvola onim redom kako su ih dretve zatražile (FIFO).\\
+
+U principu bi se semafori trebali inicijalizirati kao pošteni, kako bi izbjegli predugo čekanje jedne dretve na resurs.
+
+\section{Sinkronizacija dretvi}
+\paragraph{}
+Kada dretve koriste zajedničke varijable, njihov istovremeni pristup tim podacima mora se strogo kontrolirati zbog kolizije. Takav kritični odsječak programa obavezno se zaštićuje međusobnim isključivanjem.\\
+
+Android nam nudi tri rješenja za ovaj problem: \textit{Lock, ReadWriteLock i Condition}.
+
+\subsection{Lokot}
+Lokot \textit{(engl. Lock)} nam daje veću kontrolu nad zaključavanjem operacija od običnih \textit{synchronized} metoda. To je alat koji kontrolira pristup nekom resursu od više dretvi. U jednom trenutku samo jedna dretva može koristiti navedeni resurs, i svako korištenje isključivo traži dobiven pristup za tu akciju od strane lokota.
+
+\begin{figure}[ht!]
+%\includegraphics[width=140mm]{img/android-debug-monitor.png}
+\begin{lstlisting}
+ 			Lock l = ...;
+ 			l.lock();
+ 			try {
+   				// access the resource protected by this lock
+		  	finally {
+		   		l.unlock();
+ 			}}
+\end{lstlisting}
+\caption{Dohvaćanje slike pomoću \textit{AsyncTask} klase.}
+\label{overflow}
+\end{figure}
+
+\subsection{Lokot optimiziran za čitanje}
+Kako bi se optimiziralo vrijeme čekanja na pristup resursu, klasa \textit{ReadWriteLock} rukuje sa parom lokota, jedan u svrhu čitanja resursa, a drugi za pisanje. Specifična je po tome što lokot za čitanje može biti dostupan većem broju dretvi koje čitaju jedan resurs, sve dok ne postoji niti jedna koja želi pisati u isti.
+Time omogućava veći nivo paralelnosti izvođenja i u teoriji dovodi do velikog poboljšanja u performansama programa, osim u slučaju kada su česti zahtjevi za pisanjem.
+
+\subsection{Uvjetne varijable}
+Klasa Condition daje nam svojstva uvjetne varijable. Ona pruža metode monitora (\textit{wait(), notify(), notifyAll()}) u jedinstvenim objektima i time imamo mogućnost sadržavanja više čekaj-odobri (engl. wait-set) uvijeta koje onda možemo spojiti sa našom implementacijom lokota. 
+Ove varijable se koriste kako bi zaustavili izvođenje jedne dretve (\textit{čekaj}), sve dok druga dretva ne odobri nastavak rada na temelju nekog zadovoljenog uvjeta(\textit{odobri}).
+Svaka instance \textit{Condition} klase povezuje se na instance lokota pomoću metode \textit{newCondition()}.
 
 \chapter{Zaključak}
 Zaključak.

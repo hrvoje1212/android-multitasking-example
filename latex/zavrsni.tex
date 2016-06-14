@@ -46,7 +46,12 @@
 \tableofcontents
 
 \chapter{Uvod}
-Uvod rada. Nakon uvoda dolaze poglavlja u kojima se obrađuje tema.
+\paragraph{}
+Radni spremnik ili radna memorija \textit{(engl. Random-Access Memory, RAM)} jako je dragocjeni resurs u svakoj grani izgradnje programske podrške, a pogotovo na operacijskim sustavima koji se vrte na prijenosnim uređajima, gdje fizičke memorije često nedostaje. Iako nam u Android okruženju virtualna mašina Dalvik pomaže svojim rutinskim poslovima prikupljanja otpada \textit{(engl. garbage collection, GC)}, i dalje se mora jako puno paziti kada i gdje u aplikaciji otpuštamo zauzetu memoriju.\\
+
+Cilj ovog rada je upoznati se s Android radnim okruženjem i alatima koje nam nudi za lakše baratanje memorijom, dretvama i procesima, te izdvojiti najveće greške (npr. curenje memorije) i najbolje prakse u korištenju istih. Isto tako, pokazat će se kako svijesno možemo smanjiti potrošnju memorije kod izrade Android aplikacije\\
+
+Rad je podijeljen u tri dijela. Prvi dio opisat će korištenje memorije iz dvije perspektive - prvo će se proučiti kako Android operacijski sustav upravlja memorijom, a zatim kako razvijatelj programske podrške \textit{(engl. developer)} svojim odlukama utječe na memoriju. U sklopu prvog djela opisat će se praktični dio izvedbe straničenja. Drugi dio rada obrađuje procese i dretve, te njihovo korištenje s kraćim primjerima. Na kraju, u trećem djelu, navesti će se i opisati sinkronizacijski mehanizmi dretva i procesa, nakon čega će se opisati izvedba praktičnog djela Dekkerovog i Lamportovog algoritma na Android okruženju.\\
 
 \chapter{Upravljanje memorijom}
 \section{Kako operacijski sustav Android upravlja memorijom}
@@ -556,12 +561,12 @@ Lokot \textit{(engl. Lock)} nam daje veću kontrolu nad zaključavanjem operacij
  			Lock l = ...;
  			l.lock();
  			try {
-   				// access the resource protected by this lock
+   				// pristupanje resursu kojeg stiti lokot
 		  	finally {
 		   		l.unlock();
  			}}
 \end{lstlisting}
-\caption{Dohvaćanje slike pomoću \textit{AsyncTask} klase.}
+\caption{Pristupanje resursu pod zaštitom lokota.}
 \label{overflow}
 \end{figure}
 

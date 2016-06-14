@@ -426,7 +426,7 @@ public void onClick(View v) {
     new Thread(new Runnable() {
         public void run() {
             Bitmap bitmap = loadImageFromNetwork("http://example.com/image.png");
-            mImageView.setImageBitmap(b);
+            mImageView.setImageBitmap(bitmap);
         }
     }).start();
 }
@@ -434,6 +434,53 @@ public void onClick(View v) {
 \caption{Dohvaćanje slike u radnoj dretvi.}
 \label{overflow}
 \end{figure}
+
+Na prvi pogled sve se čini ok, napravila se nova dretva koja onda dohvaća sliku i stavi je u \textit{imageView} kako je i planirano. Međutim, kada se sjetimo drugog pravila dretvi koje govori da se nikako ne smije pristupati \textit{Android UI toolkit} elementima izvan UI dretve, uviđamo da se upravo to događa u ovoj novoj radnoj dretvi. Ovaj kod može rezultirati neočekivanim ponašanjem aplikacije i samim time se produljuje i otežava razvoj aplikacije i lovljenje bugova.\\
+
+Ovo je poznati problem i Android nudi nekoliko rješenja:
+\paragraph{•}
+\textit{Activity.runOnUiThread(Runnable action)}
+\paragraph{•}
+\textit{View.post(Runnable action)}
+\paragraph{•}
+\textit{View.postDelay(Runnable action, long delay)
+}\\
+
+Metode primaju \textit{Runnable} akciju koja će se izvršiti na UI dretvi i isto tako se može dodati parametar \textit{delay} tipa \textit{long} koji predstavlja milisekunde čekanja prije nego se akcija izvrši na UI dretvi.\newpage 
+Navedeni primjer može odmah popraviti:
+
+\begin{figure}[ht!]
+%\includegraphics[width=140mm]{img/android-debug-monitor.png}
+\begin{lstlisting}
+public void onClick(View v) {
+    new Thread(new Runnable() {
+        public void run() {
+            final Bitmap bitmap =
+                    loadImageFromNetwork("http://example.com/image.png");
+            mImageView.post(new Runnable() {
+                public void run() {
+                    mImageView.setImageBitmap(bitmap);
+                }
+            });
+        }
+    }).start();
+}
+\end{lstlisting}
+\caption{Osvježavanje slike na UI dretvi.}
+\label{overflow}
+\end{figure}
+
+Može se primijetiti da je ovaj kod u potpunosti dretveno osiguran, dohvaćanje slike obavlja se u zasebnoj dretvi, dok se manipulacija \textit{ImageView-a} odvija na UI dretvi.\\
+
+Isto tako može se vidjeti da kako se povećava kompleksnost operacija, ovakvo rješenje postaje sve kompliciranije i teže za održavanje. Ovdje će pomoći korištenje rukovatelja \textit{(engl. Handler)} u radnoj dretvi koji procesuira poruke dobivene sa UI dretve, a još bolje rješenje bi bilo proširivanje \textit{(engl. extend)} \textit{AsyncTask} klase jer pojednostavljuje pisanje koda koji bi se odvijao na radnoj dretvi i komunicirao sa UI elementima na UI dretvi.
+
+\subsection{klasa \textit{AsyncTask}}
+\paragraph{}
+Klasa \textit{AsyncTask} omogućuje i olakšava pravilno korištenje UI dretve. Ona služi za izvršavanje blokirajućih operacija u pozadini i prikazivanje rezultata na UI dretvi bez potrebe da sami manipuliramo dretvama i rukovateljima. Stoga je \textit{AsyncTask} zapravo pomoćna klasa vezana za \textit{Thread} i \textit{Handler} i nije zamišljen kao radno okruženje za baratanje dretvama. Idealno se koristi za operacije do svega par sekundi, a za sve ostale stvari koje bi se trebale duže vrtit u pozadini koriste se API koji se nalaze u java.util.concurrent paketu (npr. Executor, ThreadPoolExecutor, FutureTask).\\
+
+Svaki AsyncTask definiran je sa tri generička tipa Params, Progress i Result, i možemo ga podijeliti u 4 koraka izvršavanja onPreExecute, doInBackground, onProgressUpdate i onPostExecute.\\
+
+Da bi ga koristili svakako ga moramo napraviti odgovarajuću subklasu gdje ćemo implementirati doInBackground() metodu koja se zatim pokreće u pool-u dretvi u pozadini. Osvježavanje UI elemenata radimo u onPostExecute() metodi gdje dobivamo rezultat iz doInBackground() dijela i pokreće promjene na UI dretvi. Kad smo gotovi task se pokreće metodom execute().
 
 
 \chapter{Zaključak}

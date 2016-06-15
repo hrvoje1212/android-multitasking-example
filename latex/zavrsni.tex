@@ -58,7 +58,7 @@ Rad je podijeljen u tri dijela. Prvi dio opisat će korištenje memorije iz dvij
 \paragraph{}
 Android ne nudi prostor za zamjenu \textit{(engl. swap)} za memoriju, već u tu svrhu koristi straničenje \textit{(engl. paginig)} i mapiranje memorije \textit{(engl. memory-mapping)}.\\
 
-\textbf{Straničenje} \textit{(engl. paging)} je način na koji se spremaju i dohvaćaju podaci s vanjskog spremnika u glavnu memoriju. Operacijski sustav će te podatke dohvaćati u blokovima iste veličine i jedan takav blok zove se stranica. Ova tehnika isto tako važan je dio u implementaciji virtualne memorije, gdje se onda korištenjem vanjskog spremnika omogućava programima da prerastu dostupnu fizičku memoriju.\\
+\textbf{Straničenje} \textit{(engl. paging)} je način na koji se spremaju i dohvaćaju podaci s vanjskog spremnika u glavnu memoriju. Operacijski sustav će te podatke dohvaćati u blokovima iste veličine i jedan takav blok zove se stranica. Ova tehnika, isto tako, važan je dio u implementaciji virtualne memorije, gdje se onda korištenjem vanjskog spremnika omogućava programima da prerastu dostupnu fizičku memoriju.\\
 
 \textbf{Datoteka mapirane memorije} \textit{(engl. Memory-mapped file)} je segment virtualne memorije kojem se dodjeljuje direktna bajt po bajt korelacija s nekom datotekom ili sličnim resursom. Tipično je to datoteka koja se nalazi fizički na disku, ali može biti i uređaj ili objekt dijeljene memorije. Nakon povezanog mapiranja između datoteke i virtualne memorije aplikaciji se omogućava da tretira mapirani dio kao primarnu memoriju.\\
 
@@ -97,7 +97,58 @@ Kao što smo rekli Android nema prostor za zamjenu. Iz tog razloga, kada se kori
 
 Naravno dok se aplikacija ne koristi, pošto je spremljena u priručnoj memoriji, ona još uvijek koristi memorijski prostor. Ako sustavu nedostaje memorije, može odlučiti ubiti jednu od aplikacija u priručnoj memoriji. Odluku će donijeti na temelju procjene koja je aplikacija najmanje korištena u posljednje vrijeme, ili  koja od njih agresivno konzumira memoriju.
 
-\pagebreak
+\section{Straničenje - praktični dio}
+\paragraph{}
+U sklopu praktičnog rada pokazat će se simulacija rada straničenja uz FIFO strategiju izbacivanja stranica. Korisnik će unositi proizvoljan broj okvira za stranice u radnom spremniku i broj zahtjeva. Program će nakon toga generirati zahtjeve za stranicama te prikazati povijest spremnika na ekranu u \textit{TextView}.\newpage
+
+\begin{figure}[ht!]
+%\includegraphics[width=140mm]{img/android-debug-monitor.png}
+\begin{lstlisting}[
+    basicstyle=\footnotesize , %or \small or \footnotesize etc.
+]
+    @OnClick(R.id.fab) public void startPagingExample(View fab) {
+        requests = getRandomRequests();
+        frames = new ArrayList<>(Collections.nCopies(framesNumber, 0));
+        frameOrder = new ArrayList<>(Collections.nCopies(framesNumber, 0));	
+		printRequestsAndFrames()
+		
+        int orderCounter = 1;
+        for (int page : requests) {
+            outputTextView.append(page + " | ");
+            int minOrderIndex = 0;
+            for (int i = 0; i < frames.size(); i++) {
+                minOrderIndex =
+                        frameOrder.get(i) < frameOrder.get(minOrderIndex) ? i : minOrderIndex;
+                if (frames.get(i) == page) {
+                    minOrderIndex = i;
+                    break;
+                }
+            }
+            if (frames.get(minOrderIndex) == page) {
+                printFramesStatus(page);
+                outputTextView.append(" #bingo!\n");
+                continue;
+            }
+            frames.set(minOrderIndex, page);
+            frameOrder.set(minOrderIndex, orderCounter++);
+
+            printFramesStatus(page);
+        }
+}
+\end{lstlisting}
+\caption{Simulacija straničenja - FIFO strategija izbacivanja.}
+\label{overflow}
+\end{figure}
+Za svaki zahtjev proći će se kroz sve okvire. Ako se okvir već nalazi u memoriji neće se ništa promijeniti i ispisat će se "bingo". U protivnom će se naći okvir koji je najstariji u memoriji (koji je najprije došao) i njega će se zamijeniti.\newpage
+
+Rezultat simulacije na Android uređaju će izgledati ovako:
+\begin{figure}[ht!]
+\centering
+\includegraphics[width=70mm]{img/PagingActivity.png}
+\caption{Simulacija straničenja.}
+\label{overflow}
+\end{figure}
+
 \section{Upravljanje memorijom u Android aplikacijama}
 \paragraph{}
 Pri izradi Android aplikacija treba biti svijestan ograničenja memorije tokom svih faza razvoja, pa čak i prilikom izrade dizajna aplikacije neposredno prije samog početka razvoja. Takvim pristupom izbjegava se jako puno grešaka \textit{(engl. bug)} i curenja memorije \textit{(engl. memory leak)}, te se štedi vrijeme samog razvoja aplikacije. Postoje razne tehnike i dobre prakse vezane uz dizajn i pisanje koda koje povlače bolju kvalitetu same aplikacije i manje problema s memorijom, a u nastavku će se proći kroz one najbitnije.
@@ -578,6 +629,229 @@ Time omogućava veći nivo paralelnosti izvođenja i u teoriji dovodi do velikog
 Klasa Condition daje nam svojstva uvjetne varijable. Ona pruža metode monitora (\textit{wait(), notify(), notifyAll()}) u jedinstvenim objektima i time imamo mogućnost sadržavanja više čekaj-odobri (engl. wait-set) uvijeta koje onda možemo spojiti sa našom implementacijom lokota. 
 Ove varijable se koriste kako bi zaustavili izvođenje jedne dretve (\textit{čekaj}), sve dok druga dretva ne odobri nastavak rada na temelju nekog zadovoljenog uvjeta(\textit{odobri}).
 Svaka instance \textit{Condition} klase povezuje se na instance lokota pomoću metode \textit{newCondition()}.
+
+\section{Dekkerov algoritam - praktični dio}
+\paragraph{}
+Dekkerov je algoritam prvo pravo rješenje problema međusobnog isključivanja. On dopušta dvjema dretvama korištenje istog resursa bez konflikta, korištenjem isključivo dijeljene memorije u svrhu komunikacije, te garantira međusobno isključivanje, zaštitu od stanja zapetljanih lokota \textit{(engl. deadlock)} i zaštitu od izgladnjivanja \textit{(engl. starvation)} \\
+
+U svrhu demonstracije algoritma na Android okruženju pokazat će se primjer dvije dretve koje rade neki posao od pet koraka i ispisuju svaki korak na ekran u \textit{TextView}. Biti će nam potrebne zastavice \textit{wantsToEnter} koje označavaju namjeru dretve za ulazak u kritični odsječak, te varijabla \textit{turn} koja označava koja od dretvi je na redu.\newpage
+
+Za početak, implementirati ćemo metode ulaska i izlaska iz kritičnog odsječka.
+
+\begin{figure}[ht!]
+%\includegraphics[width=140mm]{img/android-debug-monitor.png}
+\begin{lstlisting}[
+    basicstyle=\small , %or \small or \footnotesize etc.
+]
+    private void enterCriticalSection() {
+        wantsToEnter[id] = true;
+        while (wantsToEnter[(id+1)%2]) {
+            if (turn != id) {
+                wantsToEnter[id] = false;
+                while (turn != id) {
+                    // busy wait
+                    try {
+                        Thread.sleep(230);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+                wantsToEnter[id] = true;
+            }
+        }
+    }
+    private void exitCriticalSection() {
+        turn = (id + 1) % 2;
+        wantsToEnter[id] = false;
+    }
+\end{lstlisting}
+\caption{Dekkerov algoritam - Ulazak i izlazak iz kritičnog odsječka.}
+\label{overflow}
+\end{figure}
+
+Kada dretva želi ući u kritični odsječak a nije njezin red, ona radi prazni posao \textit{(engl. busy wait)} i čeka svoj dolazak na red. Pri izlasku dretve iz kritičnog odsječka, red se prebacuje na drugu dretvu i ona automatski uzima kritični odsječak za svoj posao.\newpage
+
+Nakon toga se radi implementacija \textit{Runnable} klase koja predstavlja posao za radnu dretvu.
+
+\begin{figure}[ht!]
+%\includegraphics[width=140mm]{img/android-debug-monitor.png}
+\begin{lstlisting}[
+    basicstyle=\small , %or \small or \footnotesize etc.
+]
+public class DekkerRunnable implements Runnable {
+    public static volatile int turn = 0;
+    public static volatile boolean[] wantsToEnter = {false, false};
+    ...
+    @Override public void run() {
+        for (k = 1; k <= 5; k++) {
+            enterCriticalSection();
+             print(5);
+            exitCriticalSection();
+             Thread.sleep(500);
+        }
+    }
+    private void print(int times) {
+        for (m = 1; m <= times; m++) {
+            // update UI thread with data
+            new Handler(Looper.getMainLooper()).post(new Runnable() {
+                @Override
+                public void run() {
+                    outputTextView.append("Thread: " + id + ", C.S. NO: " + k + " (" + m + "/5)\n");
+                }
+            });
+            Thread.sleep(1000);
+        }
+    }
+
+\end{lstlisting}
+\caption{Implementacija \textit{DekkerRunnable}.}
+\label{overflow}
+\end{figure}
+
+Ovdje je dobro za uočiti da se \textit{TextView} osvježava sa novim podacima u glavnoj UI dretvi.\newpage
+
+Na kraju se rade dvije radne dretve sa instancama \textit{DekkerRunnable} implementacije i koje onda rade svoj posao i međusobno se isključuju. To će se pokretati na klik gumba.
+
+\begin{figure}[ht!]
+%\includegraphics[width=140mm]{img/android-debug-monitor.png}
+\begin{lstlisting}[
+    basicstyle=\small , %or \small or \footnotesize etc.
+]
+            public void onClick(View view) {
+                Thread thread1 = new Thread(new DekkerRunnable(0, outputTextView));
+                thread1.start();
+                Thread thread2 = new Thread(new DekkerRunnable(1, outputTextView));
+                thread2.start();
+				}
+\end{lstlisting}
+\caption{Pokretanje radnih dretvi klikom na gumb.}
+\label{overflow}
+\end{figure}
+
+Nakon klika za pokretanje radnih dretvi one će ispisivati svoj posao na ekran kao što  se vidi na sljedećoj slici.
+
+\begin{figure}[ht!]
+\centering
+\includegraphics[width=70mm]{img/DekkerActivity.png}
+\caption{Dekkerov algoritam.}
+\label{overflow}
+\end{figure}
+
+\section{Lamportov algoritam - praktični dio}
+\paragraph{}
+Lamportov je algoritam rješenje problema međusobnog isključivanja između više dretvi. Još se naziva i Lamportov algoritam pekare zbog analogije kojom je najlakše dočarati ideju algoritma. Ako se zamisli pekara da automatom brojeva na ulazu gdje svaki kupac dobiva jedinstveni broj. Taj broj se konstantno povećava svaki put kada ga kupac uzme. Na pultu pekare obješen je globalni brojač koji pokazuje koji kupac se trenutno poslužuje, dok ostali kupci čekaju u redu. Kada pekar završi posluživanje  trenutnog kupca, povećava brojač i sljedeći kupac je na redu. U ovoj analogiji kupci predstavljaju dretve, a pekar predstavlja resurse kojima dretve pristupaju.\\
+
+U svrhu demonstracije algoritma na Android okruženju pokazat će se primjer tijeka rezervacije stolova u nekom restoranu. Sveke sekunde tri dretve slučajno će odabirati jedan od pet stolova. Nakon odabira dretva ulazi u kritični odsječak te ponovo provjerava je li odabrani stol slobodan. Ako jest, označava stol zauzetim i izlazi iz kritičnog odsječka. U oba slučaja, nakon obavljene operacije ispisuje trenutno stanje svih stolova te podatke o obavljenoj rezervaciji na ekran u \textit{TextView}. Taj postupak ponavljat će se sve dok više nema slobodnih stolova.\\
+
+Biti će nam potrebne varijable \textit{entering} koja označava namjeru dretve za ulazak u kritični odsječak, te varijabla \textit{number} koja redni broj u redu za ulazak.\newpage
+
+
+Za početak, implementirati ćemo metode ulaska i izlaska iz kritičnog odsječka.
+
+\begin{figure}[ht!]
+%\includegraphics[width=140mm]{img/android-debug-monitor.png}
+\begin{lstlisting}[
+    basicstyle=\small , %or \small or \footnotesize etc.
+]
+    private void enterCriticalSection() throws InterruptedException {
+        entering[id] = true;
+        number[id] = getMaxNumber() + 1;
+        entering[id] = false;
+        for (int j = 0; j < THREADS_NUMBER; j++) {
+            // wait until thread receives its number
+            while (entering[j]) {
+                Thread.sleep(1000);
+            }
+            // Wait until all threads with smaller numbers or with the same
+            // number, but with higher priority, finish their work:
+            while ((number[j] != 0) && (number[j] < number[id] || (number[j] == number[id] && j < id))) {
+                Thread.sleep(1000);
+            }
+        }
+    }
+    private void exitCriticalSection() {
+        number[id] = 0;
+	}
+\end{lstlisting}
+\caption{Lamportov algoritam - Ulazak i izlazak iz kritičnog odsječka.}
+\label{overflow}
+\end{figure}
+
+Pri ulasku dretve u kritični odsječak, ona prvo dobiva broj za red, nakon čega čeka i obavlja prazan posao sve dok ostale dretve sa manjim brojem ne obave svoj posao do kraja. Pri izlasku dretve iz kritičnog odsječka broj dretve se invalidira tako da ostale koje čekaju u redu mogu nastaviti.\newpage
+
+Nakon toga se radi implementacija \textit{Runnable} klase koja predstavlja posao za radnu dretvu.
+
+\begin{figure}[ht!]
+%\includegraphics[width=140mm]{img/android-debug-monitor.png}
+\begin{lstlisting}[
+    basicstyle=\small , %or \small or \footnotesize etc.
+]
+public class LamportRunnable implements Runnable {
+    public static volatile boolean[] entering = new boolean[THREADS_NUMBER];
+    public static volatile int[] number = new int[THREADS_NUMBER];
+    public static volatile int[] tables = new int[TABLES_NUMBER];
+	...
+    @Override public void run() {
+            while (true) {
+                Thread.sleep(1000);
+                // check if there are free tables
+                if (allTablesBooked()) { break; }
+                final int wantedTable = (int)(Math.random() * TABLES_NUMBER);
+                // update UI thread with data
+                 uiPrint("Thread: " + id + ", table picked: " + wantedTable);                
+                enterCriticalSection();
+                 bookTable(wantedTable);
+                exitCriticalSection();
+            }
+    }
+    private void bookTable(final int wantedTable) {
+        // if table is free, reserve it
+        if (tables[wantedTable] == -1) {
+            tables[wantedTable] = id;
+            // update UI thread with data
+            uiPrint("Thread: " + id + ", table booked: " + wantedTable
+                            + ", status: " + getTablesStatus());
+        }
+        else {
+            // update UI thread with data
+            uiPrint("Thread: " + id + ", failed booking of table " + wantedTable
+                            + ", status: " + getTablesStatus());
+        }
+	}
+\end{lstlisting}
+\caption{Implementacija \textit{LamportRunnable}.}
+\label{overflow}
+\end{figure}
+\newpage
+
+Na kraju se rade tri radne dretve sa instancama \textit{LamportRunnable} implementacije i koje onda počinju birati stolove sa međusobnim isključivanjem sve dok se ne popune svi stolovi. To će se pokretati na klik gumba.
+
+\begin{figure}[ht!]
+%\includegraphics[width=140mm]{img/android-debug-monitor.png}
+\begin{lstlisting}[
+    basicstyle=\footnotesize , %or \small or \footnotesize etc.
+]
+			public void onClick(View view) {
+                Thread t1 = new Thread(new LamportRunnable(0, outputTextView));
+                t1.start();
+                Thread t2 = new Thread(new LamportRunnable(1, outputTextView));
+                t2.start();
+                Thread t3 = new Thread(new LamportRunnable(2, outputTextView));
+                t3.start();
+}
+\end{lstlisting}
+\caption{Lamportov algoritam - Pokretanje radnih dretvi klikom na gumb.}
+\label{overflow}
+\end{figure}
+
+Nakon klika za pokretanje radnih dretvi one će ispisivati svoj posao na ekran kao što  se vidi na sljedećoj slici.
+
+\begin{figure}[ht!]
+\centering
+\includegraphics[width=65mm]{img/LamportActivity.png}
+\caption{Dekkerov algoritam.}
+\label{overflow}
+\end{figure}
 
 \chapter{Zaključak}
 Zaključak.

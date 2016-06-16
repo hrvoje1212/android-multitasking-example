@@ -2,6 +2,7 @@
 \usepackage{booktabs}
 \usepackage{listings}
 \usepackage{color}
+\usepackage{cite}
 
 \definecolor{dkgreen}{rgb}{0,0.6,0}
 \definecolor{gray}{rgb}{0.5,0.5,0.5}
@@ -47,59 +48,59 @@
 
 \chapter{Uvod}
 \paragraph{}
-Radni spremnik ili radna memorija \textit{(engl. Random-Access Memory, RAM)} jako je dragocjeni resurs u svakoj grani izgradnje programske podrške, a pogotovo na operacijskim sustavima koji se vrte na prijenosnim uređajima, gdje fizičke memorije često nedostaje. Iako nam u Android okruženju virtualna mašina Dalvik pomaže svojim rutinskim poslovima prikupljanja otpada \textit{(engl. garbage collection, GC)}, i dalje se mora jako puno paziti kada i gdje u aplikaciji otpuštamo zauzetu memoriju.\\
+Radni spremnik ili radna memorija \textit{(engl. Random-Access Memory, RAM)} jako je dragocjeni resurs u svakoj grani izgradnje programske podrške, a pogotovo na operacijskim sustavima na prijenosnim uređajima, gdje fizičke memorije često nedostaje. Iako nam u Android okruženju virtualni stroj Dalvik pomaže svojim rutinskim poslovima prikupljanja otpada \textit{(engl. garbage collection, GC)}, i dalje se mora jako puno paziti kada i gdje u aplikaciji otpuštamo zauzetu memoriju.\\
 
-Cilj ovog rada je upoznati se s Android radnim okruženjem i alatima koje nam nudi za lakše baratanje memorijom, dretvama i procesima, te izdvojiti najveće greške (npr. curenje memorije) i najbolje prakse u korištenju istih. Isto tako, pokazat će se kako svijesno možemo smanjiti potrošnju memorije kod izrade Android aplikacije\\
+Cilj ovog rada je upoznati se s Android radnim okruženjem i alatima koje nam nudi za lakše upravljanje memorijom, dretvama i procesima, te izdvojiti najveće greške (npr. curenje memorije) i najbolje prakse u korištenju istih. Isto tako, pokazat će se kako svijesno možemo smanjiti potrošnju memorije kod izrade Android aplikacije\\
 
-Rad je podijeljen u tri dijela. Prvi dio opisat će korištenje memorije iz dvije perspektive - prvo će se proučiti kako Android operacijski sustav upravlja memorijom, a zatim kako razvijatelj programske podrške \textit{(engl. developer)} svojim odlukama utječe na memoriju. U sklopu prvog djela opisat će se praktični dio izvedbe straničenja. Drugi dio rada obrađuje procese i dretve, te njihovo korištenje s kraćim primjerima. Na kraju, u trećem djelu, navesti će se i opisati sinkronizacijski mehanizmi dretva i procesa, nakon čega će se opisati izvedba praktičnog djela Dekkerovog i Lamportovog algoritma na Android okruženju.\\
+Rad je podijeljen u tri dijela. Prvi dio opisuje uporabu memorije iz dvije perspektive - prvo se proučava kako Android operacijski sustav upravlja memorijom, a zatim kako razvijatelj programske podrške \textit{(engl. developer)} svojim odlukama utječe na memoriju. U okviru prvog djela opisat će se praktični dio izvedbe straničenja. Drugi dio rada obrađuje procese i dretve, te njihovo korištenje s kraćim primjerima. Na kraju, u trećem djelu, navesti će se i opisati sinkronizacijski mehanizmi dretva i procesa, nakon čega će se opisati izvedba praktičnog djela Dekkerovog i Lamportovog algoritma na Android okruženju.\\
 
 \chapter{Upravljanje memorijom}
 \section{Kako operacijski sustav Android upravlja memorijom}
 \paragraph{}
-Android ne nudi prostor za zamjenu \textit{(engl. swap)} za memoriju, već u tu svrhu koristi straničenje \textit{(engl. paginig)} i mapiranje memorije \textit{(engl. memory-mapping)}.\\
+Android ne nudi prostor za zamjenu \textit{(engl. swap)} za memoriju. Takav prostor dio je tvrdog diska gdje se privremeno čuvaju stranice iz memorije koje su trenutno neaktivne. U tu svrhu koristi se straničenje \textit{(engl. paginig)} i mapiranje memorije \textit{(engl. memory-mapping)}.\\
 
-\textbf{Straničenje} \textit{(engl. paging)} je način na koji se spremaju i dohvaćaju podaci s vanjskog spremnika u glavnu memoriju. Operacijski sustav će te podatke dohvaćati u blokovima iste veličine i jedan takav blok zove se stranica. Ova tehnika, isto tako, važan je dio u implementaciji virtualne memorije, gdje se onda korištenjem vanjskog spremnika omogućava programima da prerastu dostupnu fizičku memoriju.\\
+\textbf{Straničenje} \textit{(engl. paging)} je način na koji se spremaju i dohvaćaju podaci s vanjskog spremnika u glavnu memoriju. Operacijski sustav dohvaća podatke u blokovima iste veličine i jedan takav blok zove se stranica. Ova tehnika, isto tako, važan je dio u ostvarenju virtualne memorije, gdje se onda korištenjem vanjskog spremnika omogućava programima da prerastu dostupnu fizičku memoriju.\\
 
 \textbf{Datoteka mapirane memorije} \textit{(engl. Memory-mapped file)} je segment virtualne memorije kojem se dodjeljuje direktna bajt po bajt korelacija s nekom datotekom ili sličnim resursom. Tipično je to datoteka koja se nalazi fizički na disku, ali može biti i uređaj ili objekt dijeljene memorije. Nakon povezanog mapiranja između datoteke i virtualne memorije aplikaciji se omogućava da tretira mapirani dio kao primarnu memoriju.\\
 
-To bi značilo da kada god se koristi memorija, bilo alociranjem novih objekata ili korištenjem mapiranih stranica, ona ostaje unutar radne memorije i ne sprema se na vanjsku stranicu. Stoga, jedini način da se kompletno otpusti memorija iz aplikacije je otpuštanje referenci na objekte koji su trenutno u memoriji, nakon čega će ta memorija biti počišćena u procesu prikupljanja otpada. Postoji jedna iznimka, datoteke mapirane u sustav koje nisu mijenjane (npr. Izvorni kod) mogu se izvaditi u stranicu izvan radne memorije ako sustav trenutno želi koristiti tu memoriju u druge svrhe.
+To bi značilo da kada god se koristi memorija, bilo zauzimanjem novih objekata ili korištenjem mapiranih stranica, ona ostaje unutar radne memorije i ne sprema se na vanjsku stranicu. Stoga, jedini način da se kompletno otpusti memorija iz aplikacije je otpuštanje referenci na objekte koji su trenutno u memoriji, nakon čega će ta memorija biti počišćena u procesu prikupljanja otpada. Postoji jedna iznimka, datoteke mapirane u sustav koje nisu mijenjane (npr. izvorni kod) mogu se izvaditi u stranicu izvan radne memorije ako sustav trenutno želi koristiti tu memoriju u druge svrhe.
 
 \subsection{Dijeljenje memorije}
 \paragraph{}
-Da bi uspjeli ubaciti sve u memoriju što nam je potrebno, procesi su primorani dijeliti stranice radnog spremnika. Samo dijeljenje stranica između procesa događa se na sljedeći način:
+Kako bi uspjeli ubaciti sve u memoriju što nam je potrebno, procesi su primorani dijeliti stranice radnog spremnika. Samo dijeljenje stranica između procesa događa se na sljedeći način:
 
 \begin{enumerate}
 \item
-Svaki proces aplikacije se račva \textit{(engl. fork)} od glavnog postojećeg procesa zvanog Zigota. Proces Zigote započinje svoj život odmah nakon što se uređaj pokrene \textit{(engl. boot)} i učita izvorni kod radnog okruženja \textit{(engl. framework)} i resurse. Prilikom pokretanja novog procesa aplikacije, sustav račva Zigotu, te učita i pokrene izvorni kod aplikacije u novom procesu. Time se dobiva efekt da većina RAM stranica alociranih za radno okruženje i resurse bude dijeljena na svim živim procesima.
+Svaki proces aplikacije se račva \textit{(engl. fork)} od glavnog postojećeg procesa zvanog Zigota. Proces Zigote započinje svoj život odmah nakon što se uređaj pokrene \textit{(engl. boot)} i učita izvorni kod radnog okruženja \textit{(engl. framework)} i resurse. Prilikom pokretanja novog procesa aplikacije, sustav račva Zigotu, te učita i pokrene izvorni kod aplikacije u novom procesu. Time se dobiva efekt da većina stranica zauzetih u memoriji za radno okruženje i resurse bude dijeljena na svim živim procesima.
 
 \item
 Većina statičnih podataka je mapirano u proces. Na taj su način ti podaci automatski podijeljeni s drugim procesima i mogu se zapisati u stranice ako je potrebno.
 
 \item
-Na puno mjesta, Android dijeli isti dinamički radni spremnik na više procesa pomoću eksplicitno alocirane regije djeljene memorije (korištenjem \textit{ashmem} ili \textit{gralloc} naredbi).
+Na puno mjesta, Android dijeli isti dinamički radni spremnik na više procesa pomoću eksplicitno zauzete regije djeljene memorije (korištenjem \textit{ashmem} ili \textit{gralloc} naredbi).
 \end{enumerate}
 
-\subsection{Alociranje i oslobađanje memorije aplikacije}
+\subsection{Zauzimanje i oslobađanje memorije}
 \paragraph{}
-Za svaki proces, hrpa virtualne mašine Dalvik limitirana je na samo jednu virtualnu memoriju. To određuje logičku veličinu hrpe, koja raste po potrebi i koja ne mora nužno biti jednaka količini fizičke memorije koju hrpa koristi. Dalvik hrpa ne sažima logičku veličinu hrpe, što znači da ne radi nikakvu fragmentaciju. Jedino u slučaju pojavljivanja neiskorištenog prostora na kraju hrpe operacijski sustav može sažeti logičku veličinu hrpe.\\
+Za svaki proces, hrpa virtualnog stroja Dalvik limitirana je na samo jednu virtualnu memoriju. To određuje logičku veličinu hrpe, koja raste po potrebi i koja ne mora nužno biti jednaka količini fizičke memorije koju hrpa koristi. Dalvik hrpa ne sažima logičku veličinu hrpe, što znači da ne radi nikakvu fragmentaciju. Jedino u slučaju pojavljivanja neiskorištenog prostora na kraju hrpe operacijski sustav može sažeti logičku veličinu hrpe.\\
 
-Što se tiče fizičke memorije koju koristi hrpa, ona se može smanjiti. Nakon prikupljanja smeća, Dalvik prolazi kroz hrpu i nalazi nekorištene stranice koje onda vraća nazad \textit{kernelu} (naredbom \textit{madvise}). Treba primijetiti da ako imamo alokacije uparene s oslobađanjem, kod velikih komada memorije može se očekivati da će sva memorija biti vraćena. S druge strane manje efektivan je slučaj kada se promatraju manje alokacije jer stranica korištena za manje alokacije može biti dijeljena s nečime što se još nije oslobodilo.
+Što se tiče fizičke memorije koju koristi hrpa, ona se može smanjiti. Nakon prikupljanja smeća, virtualni stroj Dalvik prolazi kroz hrpu i nalazi nekorištene stranice koje onda vraća nazad \textit{kernelu} (naredbom \textit{madvise}). Treba primijetiti da ako imamo zauzimanje upareno s oslobađanjem, kod velikih komada memorije može se očekivati da će sva memorija biti vraćena. S druge strane manje efektivan je slučaj kada se promatraju manja zauzimanja memorije jer stranica korištena za manja zauzeća može biti dijeljena s nečime što se još nije oslobodilo.
 
 \subsection{Ograničavanje memorije aplikacije}
 \paragraph{}
-Da bi održao funkcionalno više-dretveno (engl. multi-threading) okruženje, Android svakoj aplikaciji postavlja limit na njezinu veličinu hrpe. Taj limit varira i ovisi o samom uređaju, a baziran je na ukupnoj količini radne memorije na uređaju. U slučaju da aplikacija pokuša alocirati memoriju u trenutku kada je već dosegla svoj limit, dobiti će \textit{OutOfMemoryError}.\\
+Kako bi održao funkcionalno višedretveno \textit{(engl. multithreading)} okruženje, Android svakoj aplikaciji postavlja limit na njezinu veličinu hrpe. Taj limit varira i ovisi o samom uređaju, a baziran je na ukupnoj količini radne memorije na uređaju. U slučaju da aplikacija pokuša zauzeti memoriju u trenutku kada je već dosegla svoj limit, dobiti će grešku \textit{OutOfMemoryError}.\\
 
-Provjera slobodnog prostora na hrpi može se pozvati \textit{getMemoryClass()} metoda. Ona će vratiti \textit{integer} koji pokazuje količinu slobodnih megabajta na hrpi za našu aplikaciju.
+Za provjeru slobodnog prostora na hrpi može se pozvati metoda \textit{getMemoryClass()}. Ona vraća \textit{integer} koji pokazuje količinu slobodnih megabajta na hrpi za našu aplikaciju.
 
 \subsection{Mijenjanje aplikacije od strane korisnika}
 \paragraph{}
-Kao što smo rekli Android nema prostor za zamjenu. Iz tog razloga, kada se korisnik prebacuje iz jedne aplikacije u drugu, Android sprema trenutno nevidljive procese u LRU \textit{(engl. Least Recently Used)} priručnu memoriju \textit{(engl. cache)}. Znači nakon što korisnik napusti aplikaciju, proces se ne ubija nego se sprema u priručnu memoriju sa svrhom ponovnog korištenja i bržih promjena aplikacija na uređaju.\\
+Android nema prostor za zamjenu i iz tog razloga, kada se korisnik prebacuje iz jedne aplikacije u drugu, Android sprema trenutno nevidljive procese u LRU \textit{(engl. Least Recently Used)} priručnu memoriju \textit{(engl. cache)}. Znači da nakon što korisnik napusti aplikaciju, proces se ne ubija nego se sprema u priručnu memoriju sa svrhom ponovnog korištenja i bržih promjena aplikacija na uređaju.\\
 
-Naravno dok se aplikacija ne koristi, pošto je spremljena u priručnoj memoriji, ona još uvijek koristi memorijski prostor. Ako sustavu nedostaje memorije, može odlučiti ubiti jednu od aplikacija u priručnoj memoriji. Odluku će donijeti na temelju procjene koja je aplikacija najmanje korištena u posljednje vrijeme, ili  koja od njih agresivno konzumira memoriju.
+Naravno dok se aplikacija ne koristi, pošto je spremljena u priručnoj memoriji, ona još uvijek koristi memorijski prostor. Ako sustavu nedostaje memorije, može odlučiti ubiti jednu od aplikacija u priručnoj memoriji. Odluku donosi na temelju procjene koja je aplikacija najmanje korištena u posljednje vrijeme, ili  koja od njih agresivno konzumira memoriju.
 
 \section{Straničenje - praktični dio}
 \paragraph{}
-U sklopu praktičnog rada pokazat će se simulacija rada straničenja uz FIFO strategiju izbacivanja stranica. Korisnik će unositi proizvoljan broj okvira za stranice u radnom spremniku i broj zahtjeva. Program će nakon toga generirati zahtjeve za stranicama te prikazati povijest spremnika na ekranu u \textit{TextView}.\newpage
+U okviru praktičnog rada dan je prikaz simulacije rada straničenja uz FIFO strategiju izbacivanja stranica. Korisnik unosi proizvoljan broj okvira za stranice u radnom spremniku i broj zahtjeva. Program nakon toga generira zahtjeve za stranicama te prikazuje povijest spremnika na ekranu u \textit{TextView}.\newpage
 
 \begin{figure}[ht!]
 %\includegraphics[width=140mm]{img/android-debug-monitor.png}
@@ -139,9 +140,9 @@ U sklopu praktičnog rada pokazat će se simulacija rada straničenja uz FIFO st
 \caption{Simulacija straničenja - FIFO strategija izbacivanja.}
 \label{overflow}
 \end{figure}
-Za svaki zahtjev proći će se kroz sve okvire. Ako se okvir već nalazi u memoriji neće se ništa promijeniti i ispisat će se "bingo". U protivnom će se naći okvir koji je najstariji u memoriji (koji je najprije došao) i njega će se zamijeniti.\newpage
+Za svaki zahtjev prolazi se kroz sve okvire. Ako se okvir već nalazi u memoriji ništa se ne mijenja i ispisuje se "bingo". U protivnom se pronalazi okvir koji je najstariji u memoriji (koji je najprije došao) i njega se zamjenjuje.\newpage
 
-Rezultat simulacije na Android uređaju će izgledati ovako:
+Rezultat simulacije na Android uređaju izgleda ovako:
 \begin{figure}[ht!]
 \centering
 \includegraphics[width=70mm]{img/PagingActivity.png}
@@ -153,11 +154,11 @@ Rezultat simulacije na Android uređaju će izgledati ovako:
 \paragraph{}
 Pri izradi Android aplikacija treba biti svijestan ograničenja memorije tokom svih faza razvoja, pa čak i prilikom izrade dizajna aplikacije neposredno prije samog početka razvoja. Takvim pristupom izbjegava se jako puno grešaka \textit{(engl. bug)} i curenja memorije \textit{(engl. memory leak)}, te se štedi vrijeme samog razvoja aplikacije. Postoje razne tehnike i dobre prakse vezane uz dizajn i pisanje koda koje povlače bolju kvalitetu same aplikacije i manje problema s memorijom, a u nastavku će se proći kroz one najbitnije.
 
-\subsection{Pažljivo baratanje servisima}
+\subsection{Pažljivo upravljanje servisima}
 \paragraph{}
 Pri korištenju nekog servisa za odrađivanje posla u pozadini, mora se jako paziti da  ne ostane pokrenut u trenucima kada ne obavlja aktivno niti jedan posao. Isto tako ne smije se dogoditi da servis procuri, što se događa kada ga se zaboravi zaustaviti nakon obavljenog posla. Takav propust smatra se jednom od najgorih grešaka kod upravljanja memorijom jer ne samo da će aplikacija lošije funkcionirati, nego će i korisnici primijetiti neočekivana ponašanja i pobrisati aplikaciju s uređaja.\\
 
-Najbolji način za limitiranje životnog spektra servisa je korištenje \textit{IntentService} klase, koja će se sama počistiti odmah nakon što odradi stvar zbog koje je pozvana.
+Najbolji način za ograničavanje životnog spektra servisa je korištenje klase \textit{IntentService}, koja će se sama počistiti odmah nakon što odradi stvar zbog koje je pozvana.
 
 \subsection{Otpuštanje memorije}
 \paragraph{}
@@ -169,48 +170,46 @@ Ovo je jedna od najvažnijih zastavica i indicira da je korisničko sučelje \te
 
 \paragraph{•}
 \verb|TRIM_MEMORY_RUNNING_MODERATE|\\
-Naša aplikacija nije direktno ugrožena, sustav javlja da je slab s memorijom i počinje aktivno ubijati procese u LRU priručnoj memoriji.
+Aplikacija nije direktno ugrožena, sustav javlja da je slab s memorijom i počinje aktivno ubijati procese u LRU priručnoj memoriji.
 
 \paragraph{•}
 \verb|TRIM_MEMORY_RUNNING_LOW|\\
-Naša aplikacija nije direktno ugrožena, sustav javlja da je puno slabiji s memorijom i ovdje bi se trebali već poćeti oslobađati nekorišteni resursi u aplikaciji.
+Aplikacija nije direktno ugrožena, sustav javlja da je puno slabiji s memorijom i ovdje bi se trebali već poćeti oslobađati nekorišteni resursi u aplikaciji.
 
 \paragraph{•}
 \verb|TRIM_MEMORY_RUNNING_CRITICAL|\\
 Naša aplikacija još uvijek živi, ali sustav je već ubio većinu procesa u LRU priručnoj memoriji. Ovdje se trebaju otpustiti svi resursi koji nisu krucijalni za nastavak rada aplikacije.\\
 
 \noindent
-Ukoliko je naš proces već u priručnoj memoriji možemo očekivati sljedeće zastavice:
+Ako je naš proces već u priručnoj memoriji i sustav primijeti da nedostaje slobodne memorije, možemo očekivati sljedeće zastavice:
 
 \paragraph{•}
 \verb|TRIM_MEMORY_BACKGROUND|\\
-Sustav je slab s memorijom, a naš proces je negdje na početku LRU liste. Iako naš proces nema prevelik rizik da bude uništen ubrzo, ovo je signal da se LRU priručna memorija već počinje čistiti i ovdje bi trebali osloboditi sve resurse koje je kasnije lako povratiti.
+Proces je negdje na početku LRU liste. Iako nema prevelik rizik da ubrzo bude uništen, ovo je signal da se LRU priručna memorija već počinje čistiti i ovdje bi trebali osloboditi sve resurse koje je kasnije lako povratiti.
 
 \paragraph{•}
 \verb|TRIM_MEMORY_MODERATE|\\
-Sustav je slab s memorijom, a naš proces je negdje na sredini LRU liste i postoji dobra šansa da se naš proces uništi ako proces zatraži još dodatne memorije.
+Proces je negdje na sredini LRU liste i postoji dobra šansa da se uništi ako netko zatraži još dodatne memorije.
 
 \paragraph{•}
 \verb|TRIM_MEMORY_COMPLETE|\\
-Sustav je slab s memorijom, a naš proces je prvi koji će biti uništen ako sustav u tom trenutku ne uspije osloboditi dovoljno memorije. Ovdje treba otpustiti apsolutno sve što nije krucijalno za nastavak rada aplikacije.\\
+Proces je prvi koji će biti slijedeći uništen ako sustav u tom trenutku ne uspije osloboditi dovoljno memorije. Ovdje treba otpustiti apsolutno sve što nije krucijalno za nastavak rada aplikacije.\\
 
-Ovaj \textit{onTrimMemory()} ugrađeni poziv je dodan tek u API verzije 14 tako da za starije verzije uređaja treba koristiti \textit{onLowMemory()} ugrađeni poziv koji se u principu ponaša isto kao i \verb|TRIM_MEMORY_COMPLETE| \textit{event}.
+Ovaj ugrađeni poziv \textit{onTrimMemory()} je dodan tek u API verzije 14 tako da za starije verzije uređaja treba koristiti ugrađeni poziv \textit{onLowMemory()} koji se u principu ponaša isto kao i \verb|TRIM_MEMORY_COMPLETE| \textit{event}.
 
 \subsection{Provjera dostupne memorije}
 \paragraph{}
-Kako je svaki android uređaj drukčiji i njegova količina radne memorije varira, isto tako mijenja se i limit veličine hrpe za svaku aplikaciju na uređaju. U slučaju da aplikacija pokuša alocirati memoriju u trenutku kada je već dosegla svoj limit, dobiti će \textit{OutOfMemoryError}, a pozivom na \textit{getMemoryClass()} dobit će se procjena dostupne memorije za aplikaciju u megabajtima.\\
+Kako je svaki android uređaj drukčiji i njegova količina radne memorije varira, isto tako mijenja se i limit veličine hrpe za svaku aplikaciju na uređaju. U slučaju da aplikacija pokuša zauzeti memoriju u trenutku kada je već dosegla svoj limit, dobiti će grešku \textit{OutOfMemoryError}, a pozivom na metodu \textit{getMemoryClass()} dobit će se procjena dostupne memorije za aplikaciju u megabajtima.\\
 
-U posebnim slučajevima može se zatražiti veća količina hrpe postavljanjem atributa \textit{largeHeap} na \textit{true} unutar \textit{manifest} \verb|<application>| taga. Tada se procjena dostupne memorije za tu veću hrpu dobiva pozivom \textit{getLargeMemoryClass()} metode.\\
-
-Naravno to se nikako ne smije koristiti kao lako rješenje svaki puta kada se ostane bez memorije. Ovakav pristup namijenjen je malom broju aplikacija koje mogu opravdati potražnju za većom količinom memorije.
+U posebnim slučajevima može se zatražiti veća količina hrpe postavljanjem atributa \textit{largeHeap} na \textit{true} unutar \textit{manifest} \verb|<application>| taga. Tada se procjena dostupne memorije za tu veću hrpu dobiva pozivom metode \textit{getLargeMemoryClass()}. Naravno to se nikako ne smije koristiti kao lako rješenje svaki puta kada se ostane bez memorije. Ovakav pristup namijenjen je malom broju aplikacija koje mogu opravdati potražnju za većom količinom memorije.
 
 \subsection{Skaliranje bitmapa}
 \paragraph{}
-Prilikom učitavanja \textit{bitmap} datoteke, cilj je u memoriji držati samo rezoluciju koja nam treba za ekran trenutnog uređaja. Ako je originalna \textit{bitmap} datoteka prevelika, skalirat ćemo ju na željenu veličinu. Ovime se štedi jako puno memorije jer količina memorije za držanje \textit{bitmap} datoteke raste kvadratno s porastom veličine grafike (jer rastu X i Y osi).
+Prilikom učitavanja \textit{bitmap} datoteke, cilj je u memoriji držati samo rezoluciju koja nam treba za ekran trenutnog uređaja. Ako je originalna \textit{bitmap} datoteka prevelika, se mora skalirati na željenu veličinu. Ovime se štedi jako puno memorije jer količina memorije za držanje \textit{bitmap} datoteke raste kvadratno s porastom veličine grafike (jer rastu X i Y osi).
 
 \subsection{Optimizirani spremnici podataka}
 \paragraph{}
-Radno okruženje Android nam nudi strukture za spremanje podataka koje su optimizirane za Android OS, kao na primjer \textit{SparseArray, SparseBooleanArray i LongSparseArray}. Ako uzmemo za primjer implementaciju \textit{HashMap} strukture, ona može biti jako neugodna za memoriju jer prilikom svakog mapiranja stvara novi objekt. S druge strane \textit{SparseArray} klase su optimizirane tako da izbjegavaju potrebu automatske konverzije iz primitiva u klasu objekta \textit{(engl. autoboxing)}(npr. int u Integer) ključa, a ponekad i same vrijednosti.\\
+Radno okruženje Android nam nudi strukture za spremanje podataka koje su optimizirane za Android OS, kao na primjer \textit{SparseArray, SparseBooleanArray i LongSparseArray}. Ako uzmemo za primjer ostvarenje \textit{HashMap} strukture, ona može biti jako neugodna za memoriju jer prilikom svakog mapiranja stvara novi objekt. S druge strane \textit{SparseArray} klase su optimizirane tako da izbjegavaju potrebu automatske konverzije iz primitiva u klasu objekta \textit{(engl. autoboxing)}(npr. int u Integer) ključa, a ponekad i same vrijednosti.\\
 
 Isto tako možemo iskoristiti i bazične \textit{Java} nizove kada to ima smisla.
 
@@ -228,7 +227,7 @@ Svaka klasa u \textit{Javi} koristi približno 500 bajta koda.
 Svaka instanca klase ima 12-16 bajta dodatnog troška u radnom spremniku.
 
 \paragraph{•}
-Stavljanje jednog unosa u \textit{HashMap}, zahtjeva alokaciju još jednog dodatnog objekta veličine 32 bajta.\\
+Stavljanje jednog unosa u \textit{HashMap}, zahtjeva zauzimanje memorije još jednog dodatnog objekta veličine 32 bajta.\\
 
 Iako u prvu ruku ne izgleda kao prevelika štednja, kada se ovakve sitnice  skaliraju to jako brzo postaje veliki problem iz perspektive memorije.
 
@@ -246,7 +245,7 @@ Kada se koristi neko radno okruženje za ubrizgavanje zavisnosti (engl. dependen
 
 \subsection{Eksterne biblioteke}
 \paragraph{}
-Na eksterne biblioteke treba uvijek posebno paziti, pogotovo kada ih se koristi više u jednom projektu. Prvo se dolazi do problema kada biblioteka nije optimizirana za korištenje na mobilnim uređajima, u kojem će se slučaju morati preuzeti pisanje optimizacije i održavanje tog koda. S druge strane i onda kada su biblioteke navodno optimizirane za mobilne uređaje, tu imamo potencijalni problem kada više njih rade istu stvar na različite načine i javljaju se veliki dodatni troškovi memorije. Na primjer, ako koristimo dvije biblioteke s različitim implementacijama za \textit{logging, caching, analytics} i slično.
+Na eksterne biblioteke treba uvijek posebno paziti, pogotovo kada ih se koristi više u jednom projektu. Prvo se dolazi do problema kada biblioteka nije optimizirana za korištenje na mobilnim uređajima, u kojem će se slučaju morati preuzeti pisanje optimizacije i održavanje tog koda. S druge strane i onda kada su biblioteke navodno optimizirane za mobilne uređaje, tu imamo potencijalni problem kada više njih rade istu stvar na različite načine i javljaju se veliki dodatni troškovi memorije. Na primjer, ako koristimo dvije biblioteke s različitim ostvarenjima za \textit{logging, caching, analytics} i slično.
 
 \subsection{Proguard}
 \paragraph{}
@@ -264,10 +263,10 @@ Za \textit{alignment} parametar koristi se 4 bajta na android okruženju, a zast
 
 \subsection{Analiza korištenja radne memorije}
 \paragraph{}
-Da bi se dobio bolji uvid u funkcionalnost naše aplikacije, svaki stabilan build bilo bi dobro analizirati.
-Prvi I najjednostavniji način je čitanje informacijskih poruka (engl. log) sakupljača smeća. Dok Dalvik svaki put printa poruke sakupljača smeća, ART printa samo one koje su eksplicitno zahtjevane.\\
+Kako bi se dobio bolji uvid u funkcionalnost naše aplikacije, svaki stabilan \textit{build} bilo bi dobro analizirati.
+Prvi i najjednostavniji način je čitanje informacijskih poruka \textit{(engl. log)} sakupljača smeća. Dok virtualni stroj Dalvik svaki put ispisuje poruke sakupljača smeća, ART ispisuje samo one koje su eksplicitno zahtjevane.\\
 
-Druga stvar koja nam pomaže je Android Debug Monitor u Android Studiu koji prikazuje raznovrsne informacije o stanju memorije i uređaja općenito.\\
+Druga stvar koja nam pomaže je \textit{Android Debug Monitor} u Android Studiu koji prikazuje raznovrsne informacije o stanju memorije i uređaja općenito.\\
 
 \begin{figure}[ht!]
 \centering
@@ -276,12 +275,12 @@ Druga stvar koja nam pomaže je Android Debug Monitor u Android Studiu koji prik
 \label{overflow}
 \end{figure}
 
-Za detaljniju analizu može se pogledati kako je memorija naše aplikacije podijeljena po raznim tipovima alokacije radnog spremnika pomoću \textit{adb} naredbe:
+Za detaljniju analizu može se pogledati kako je memorija naše aplikacije podijeljena po raznim tipovima zauzeća radnog spremnika pomoću \textit{adb} naredbe:
 
 \begin{center}
 \verb=adb shell dumpsys meminfo <package_name | pid> [-d]=
 \end{center}
-koja će dati rezultat sličan ovome:
+koja daje rezultat sličan ovome:
 
 \begin{figure}[ht!]
 \centering
@@ -310,11 +309,11 @@ i ovdje nam je bitno raspoznati dvije stvari:
 
 \paragraph{•}
 \textbf{Privatni čisti i prljavi radni spremnik} \textit{(engl. Private Clean and Dirty RAM)}\\
-Ovo je količina memorije koju koristi naš proces i to je onaj dio memorije koji sustav može dobiti nazad nakon uništavanja istog. Ovdje je najbitnije gledati prljavi dio radnog spremnika, koji je ujedno i najskuplji, jer se tim djelom koristi samo naš process i ne može se straničiti na disk.
+Ovo je količina memorije koju koristi naš proces i to je onaj dio memorije koji sustav može dobiti nazad nakon uništavanja istog. Ovdje je najbitnije gledati prljavi dio radnog spremnika, koji je ujedno i najskuplji, jer se tim djelom koristi samo taj process i ne može se straničiti na disk.
 
 \paragraph{•}
 \textbf{Proporcionalna veličina skupa} \textit{(engl. Proportional Set Size, PSS)}\\
-Ovo je količina memorije koju koristi naša aplikacija uzimajući u obzir dijeljenje stranica kroz više procesa. Svaka stranica koja je jedinstvena za naš process direktno pridonosi ovoj vrijednosti, dok ostale stranice koje se dijele s drugim procesima doprinose proporcionalnu vrijednost dijela kojeg zauzimaju.
+Ovo je količina memorije koju koristi aplikacija uzimajući u obzir dijeljenje stranica kroz više procesa. Svaka stranica koja je jedinstvena za naš process direktno pridonosi ovoj vrijednosti, dok ostale stranice koje se dijele s drugim procesima doprinose proporcionalnu vrijednost dijela kojeg zauzimaju.
 
 \subsection{Korištenje više procesa}
 \paragraph{}
@@ -353,24 +352,23 @@ adb shell dumpsys meminfo com.example.android.apis:empty
 
 Može se primijetiti da veličina nije baš zanemariva, i isto tako brzo i raste porastom kompleksnosti posla tog procesa. Na primjer, process koji prikazuje jedan \textit{Activity} sa tekstom će zauzeti 4MB, što je tri puta više, i to samo za prikazivanje običnog teksta na UI.\\
 
-Ovime dolazimo do konkretnog zaključka, ako već moramo podijeliti aplikaciju u procese, isključovo jedan process mora biti zadužen za UI, a ostali moraju izbjegavati bilo kakvo korištenje UI elemenata, jer u suprotnom ćemo napuniti memoriju u kratkom roku.\\
+Ovime se dolazi do konkretnog zaključka, ako se već aplikacija dijeli u procese,\linebreak isključivo jedan process mora biti zadužen za UI, a ostali moraju izbjegavati bilo kakvo korištenje UI elemenata, jer u suprotnom ćemo napuniti memoriju u kratkom roku.\\
 
-Dodatno pošto se aplikacija vrti u više procesa mora se puno više fokusa uložiti u optimizaciju korištenja memorije u kodu jer se u ovom slučaju svaki propust replicira na druge procese i stvara sve veći problem.
+Dodatno, kako se aplikacija obavlja u više procesa mora se puno više fokusa uložiti u optimizaciju korištenja memorije u kodu jer se u ovom slučaju svaki propust replicira na druge procese i stvara sve veći problem.
 
 \pagebreak
 \chapter{Procesi i dretve}
 \section{Uvod}
 \paragraph{}
-Pri pokretanju nove aplikacije, ako aplikacija nema niti jednu komponentu već pokrenutu, Android će pokrenuti novi Linux proces za tu aplikaciju s jednom dretvom. Po pravilu, sve komponente iste aplikacije pokreću se u istom procesu i dretvi -glavna dretva \textit{(engl. main thread)}. Ako prilikom pokretanja neke komponente već postoji proces koji je zadužen za tu aplikaciju (jer postoji neka druga komponenta koja je već pokrenuta) onda se nova komponenta pokreće unutar toga procesa i koristi istu dretvu za izvršavanje. Naravno, ako želimo, možemo svaku komponentu specifično izdvojiti u drugi proces ili napraviti više dretvi za bilo koji proces.
+Pri pokretanju nove aplikacije, ako aplikacija nema niti jednu komponentu već pokrenutu, Android će pokrenuti novi Linux proces za tu aplikaciju s jednom dretvom. Po pravilu, sve komponente iste aplikacije pokreću se u istom procesu i dretvi. To je glavna dretva \textit{(engl. main thread)}. Ako prilikom pokretanja neke komponente već postoji proces koji je zadužen za tu aplikaciju (jer postoji neka druga komponenta koja je već pokrenuta) onda se nova komponenta pokreće unutar toga procesa i koristi istu dretvu za izvršavanje. Naravno, svaku komponentu može se specifično izdvojiti u drugi proces ili napraviti više dretvi za bilo koji proces.
 
 \section{Procesi}
 \paragraph{}
-Iako su sve komponente po pravilu pokrenute u istom procesu (i to se u većini slučajeva ne bi trebalo mijenjati), mi imamo potpunu kontrolu nad njima i može se lako promijeniti proces kojem će komponenta pripadati. To se radi u \textit{AndroidManifest.xml} datoteci. Svaki unos elementa android komponente u \textit{manifestu} - \verb|<activity>,| \verb|<service>, <receiver>, <provider>| - sadrži atribut \textit{android:process} gdje možemo specificirati ime procesa u kojem će komponenta živjeti.
+Iako su sve komponente po pravilu pokrenute u istom procesu (i to se u većini slučajeva ne bi trebalo mijenjati), postoji mogućnost potpune kontrole nad njima i može se lako promijeniti proces kojem će komponenta pripadati. To se radi u datoteci \textit{AndroidManifest.xml}. Svaki unos elementa android komponente u \textit{manifestu} - \verb|<activity>,| \verb|<service>, <receiver>, <provider>| - sadrži atribut \textit{android:process} gdje se može specificirati ime procesa u kojem će komponenta živjeti.\newpage
 
 \begin{figure}[ht!]
 \centering
 \begingroup
-    \fontsize{10pt}{12pt}\selectfont
 		\begin{lstlisting}
         <activity android:icon="drawable resource"
             android:label="string resource"
@@ -382,7 +380,7 @@ Iako su sve komponente po pravilu pokrenute u istom procesu (i to se u većini s
 		\end{lstlisting}
 \endgroup
 %\includegraphics[width=120mm]{img/example.png}
-\caption{\textit{Activity} element unutar AndroidManifest.xml.}
+\caption{Element \textit{Activity} unutar AndroidManifest.xml.}
 \label{overflow}
 \end{figure}
 
@@ -395,7 +393,7 @@ Android se u bilo kojem trenutku može odlučiti ubiti proces, kad je memorija p
 
 \subsection{Život procesa}
 \paragraph{}
-Android ima u cilju što duže zadržati proces aplikacije živim, dok ga eventualno ne uništi kako bi oslobodio memoriju za nove ili važnije procese. Za takvu vrstu odluke procesi se stavljaju u hijerarhiju po važnosti. Ta hijerarhija bazirana je na pokrenutim komponentama u procesu i njihovom trenutnom stanju, te se onda postepeno izbacuju procesi od najmanje važnosti.\\
+Android ima u cilju što duže zadržati proces aplikacije živim, dok ga eventualno ne uništi kako bi oslobodio memoriju za nove ili važnije procese. Za takvu vrstu odluke procesi se stavljaju u \textit{hijerarhiju po važnosti}. Ta hijerarhija bazirana je na pokrenutim komponentama u procesu i njihovom trenutnom stanju, te se onda postepeno izbacuju procesi od najmanje važnosti.\\
 
 Postoji pet stupnjeva \textit{hijerarhije po važnosti}. U sljedećoj listi prikazani su različiti tipovi procesa po važnosti (prvi je najvažniji, odnosno zadnji se ubija):
 
@@ -404,34 +402,33 @@ Postoji pet stupnjeva \textit{hijerarhije po važnosti}. U sljedećoj listi prik
 \textbf{Proces u prvom planu} \textit{(engl. Foreground process)}\\
 Proces koji je potreban za ono što korisnik trenutno radi i vidi. Smatra se da je proces u prvom planu ako je ispunjen jedan od slučajeva:
 	\begin{itemize}
-	\item sadrži \textit{activity} s kojim korisnik komunicira – pozvana \textit{onResume()} metoda nad \textit{activity-em}
+	\item sadrži \textit{activity} s kojim korisnik komunicira – pozvana metoda \textit{onResume()} nad \textit{activity-em}
 	\item sadrži servis koji je povezan s \textit{activity-em} s kojim korisnik komunicira
-	\item sadrži servis koji je pokrenut u prvom planu – pozvana \textit{startForeground()} metoda servisa
+	\item sadrži servis koji je pokrenut u prvom planu – pozvana metoda \textit{startForeground()} servisa
 	\item sadrži servis koji pokreće jedan od svojih glavnih ugrađenih poziva – \textit{onCreate(), onStart() ili onDestroy()}
-	\item sadrži \textit{BroadcastReceiver} koji trenutno izvršava \textit{onReceive()} metodu
+	\item sadrži \textit{BroadcastReceiver} koji trenutno izvršava metodu \textit{onReceive()}
 	\end{itemize}
-Realno će  u bilo kojem danom trenutku biti svega par takvih procesa upaljenih i njihovo se ubijanje smatra zadnjom opcijom, a to je kada nema dovoljno memorije da se svi izvršavaju odjednom. U tom trenutku uređaj je u stanju straničenja memorije, pa je ubijanje ovih procesa potrebno kako bi održali UI responzivnim.	
+U stvarnosti će  u bilo kojem danom trenutku biti svega par takvih procesa pokrenutih i njihovo se ubijanje smatra zadnjom opcijom, a to je kada nema dovoljno memorije da se svi izvršavaju odjednom. U tom trenutku uređaj je u stanju straničenja memorije, pa je ubijanje ovih procesa potrebno kako bi održali UI responzivnim.	
 	
 \item
 \textbf{Vidljivi procesi}\\
 Proces je vidljiv ako nema nijednu komponentu u prvom planu, ali utječe na ono što korisnik vidi na ekranu. Smatra se da je proces vidljiv ako je ispunjen jedan od slučajeva:
 	\begin{itemize}
-	\item sadrži \textit{activity} koji nije u prvom planu, ali je vidljiv korisniku – pozvana \textit{onPause()} metoda (npr. kad se otvori dijalog, roditeljski \textit{activity} je još uvijek vidljiv ispod njega)
+	\item sadrži \textit{activity} koji nije u prvom planu, ali je vidljiv korisniku – pozvana metoda \textit{onPause()} (npr. kad se otvori dijalog, roditeljski \textit{activity} je još uvijek vidljiv ispod njega)
 	\item sadrži servis koji je vezan za vidljivi ili \textit{activity} u prvom planu
 	\end{itemize}
 Ovakav se proces smatra iznimno važnim i neće se dirati ako to nije potrebno da bi procesi u prvom planu preživjeli.
 
 \item
 \textbf{Proces Servisa}\\
-Proces koji ima pokrenut servis sa \textit{startService()} metodom i koji nije pripadnik prve dvije kategorije.\\
+Proces koji ima servis pokrenut s metodom \textit{startService()} i koji nije pripadnik prve dvije kategorije.\\
 Iako servisi inače nisu direktno povezani s onime što korisnik vidi, oni rade stvari koje su bitne za krajnjeg korisnika (npr. puštanje muzike u pozadini) tako da ih Android drži živima dok ima dovoljno memorije da prežive i procesi u prvom planu i svi vidljivi procesi.
 
 \item
 \textbf{Proces u pozadini}\\
-Proces koji sadrži \textit{activity} koji trenutno nije vidljiv korisniku – pozvana je\linebreak \textit{onStop()} metoda.\\
-Takvi procesi nemaju nikakav utjecaj na UX, tako da ih Android u bilo kojem trenutku može ubiti s ciljem oslobađanja memorije. Realno u bilo kojem danom trenutku biti će puno procesa koji se izvode u pozadini, i oni se spremaju u LRU priručnu memoriju kako bi se osiguralo pravedno uništavanje aplikacija po prioritetu najmanjeg korištenja istih.
+Proces koji sadrži \textit{activity} koji trenutno nije vidljiv korisniku – pozvana je \linebreak metoda \textit{onStop()}.\\
+Takvi procesi nemaju nikakav utjecaj na UX, tako da ih Android u bilo kojem trenutku može ubiti s ciljem oslobađanja memorije. U stvarnosti će u bilo kojem danom trenutku biti puno procesa koji se izvode u pozadini, i oni se spremaju u LRU priručnu memoriju kako bi se osiguralo pravedno uništavanje aplikacija po prioritetu najmanjeg korištenja istih.
 
-\pagebreak
 \item
 \textbf{Prazan proces}\\
 Proces koji ne sadrži niti jednu aktivnu komponentu aplikacije.\\
@@ -439,25 +436,25 @@ Jedini razlog da bi uopće postojao ovakav proces je zbog korištenja priručne 
 
 \end{enumerate}
 
-Tijekom rangiranja procesa Android će uzeti najveći mogući stupanj hijerarhije koji je zadovoljen. Ako proces sadrži i servis i vidljivi \textit{activity}, biti će rangiran kao vidljivi proces, a ne kao proces servisa.\\
+Tijekom rangiranja procesa Android uzima najveći mogući stupanj hijerarhije koji je zadovoljen. Ako proces sadrži i servis i vidljivi \textit{activity}, biti će rangiran kao vidljivi proces, a ne kao proces servisa.\\
 
-Isto tako, proces može biti promaknut ako postoji neki drugi proces koji ovisi o njemu – jer proces ne smije biti manje rangiran od procesa kojeg poslužuje. Dobar primjer za to daju \textit{ContentProvider} klase ili servisi koji su vezani za neku komponentu u drugom procesu.\\
+Isto tako, proces može biti promaknut ako postoji neki drugi proces koji ovisi o njemu – jer proces ne smije biti manje rangiran od procesa kojeg poslužuje. Dobar primjer za to daju klase \textit{ContentProvider} ili servisi koji su vezani za neku komponentu u drugom procesu.\\
 
-Može se primijetiti da je proces servisa više rangiran od procesa u pozadini, tako da ako u aplikaciji radimo neki posao koji ima veće trajanje nego obično (npr. upload datoteke) najbolje je da sav posao prebacimo u novi servis nego da ga odrađujemo na radnoj dretvi \textit{(engl. worker thread)}. Time dobivamo sigurnost da će proces biti rangiran kao proces servisa, bez obzira na to što se dogodi sa \textit{activity-em}. Iz istog razloga je i dobra praksa u \textit{BroadcastReceiver} klasi uposliti servise umjesto da opterećujemo dretvu.
+Može se primijetiti da je proces servisa više rangiran od procesa u pozadini, tako da ako u aplikaciji radimo neki posao koji ima veće trajanje nego obično (npr. upload datoteke) najbolje je da sav posao prebacimo u novi servis nego da ga odrađujemo na radnoj dretvi \textit{(engl. worker thread)}. Time dobivamo sigurnost da će proces biti rangiran kao proces servisa, bez obzira na to što se dogodi sa \textit{activity-em}. Iz istog razloga je i dobra praksa u klasi \textit{BroadcastReceiver} uposliti servise umjesto da opterećujemo dretvu.
 
 \subsection{Komunikacija između procesa}
 \paragraph{}
-Za komunikaciju između različitih procesa Android koristi RPC pozive \textit{(engl. Remote Procedure Call, RPC)}, gdje poziva metodu iz \textit{activityj-a} ili neke druge komponente aplikacije i ista se izvršava u drugom procesu, te nakon izvršavanja vraća rezultat pozivatelju. Na ovaj se način poziv metode rastavlja na nivo operacijskog sustava i prenosi se iz lokalnog procesa i adresnog prostora na drugi proces i njegov adresni prostor te tamo izvršava naredbe pozvane metode i vraća rezultat na isti način u drugom smjeru. Android rješava sav kod za transakcije komunikacije između procesa \textit{(engl. Interprocess Communication, IPC)} tako da je sve što se treba napraviti definicija i implementacija RPC sučelja (engl. interface).\\
+Za komunikaciju između različitih procesa Android koristi RPC pozive \textit{(engl.\linebreak Remote Procedure Call, RPC)}, gdje poziva metodu iz \textit{activityj-a} ili neke druge komponente aplikacije i ista se izvršava u drugom procesu, te nakon izvršavanja vraća rezultat pozivatelju. Na ovaj se način poziv metode rastavlja na nivo operacijskog sustava i prenosi se iz lokalnog procesa i adresnog prostora na drugi proces i njegov adresni prostor te tamo izvršava naredbe pozvane metode i vraća rezultat na isti način u drugom smjeru. Android rješava sav kod za transakcije komunikacije između procesa \textit{(engl. Interprocess Communication, IPC)} tako da je sve što se treba napraviti definicija i ostvarenje RPC sučelja (engl. interface).\\
 
 Kako bi obavili IPC komunikaciju, aplikacija se mora vezati za servis metodom \textit{bindService()} koja vraća klijent-server sučelje preko kojeg komponente aplikacije komuniciraju sa servisom. Takav povezani servis \textit{(engl. Bound Service)} živi sve dok ima neku komponentu bilo koje druge aplikacije povezanu na sebe. Pošto je moguće spojiti više komponenata odjednom na jedan takav servis, u trenutku kada se sve komponente odspoje, servis će se uništiti. Na ovaj način otvaramo dostupnost djela funkcionalnosti naše aplikacije ostalim aplikacijama preko IPC komunikacije.\\
 
-Da bi kreirali vezani servis, mora se implementirati \textit{onBind()} metoda ugrađenog poziva gdje se vraća \textit{IBinder} koji služi kao sučelje za komunikaciju sa samim servisom. Nakon toga ostale se komponente mogu jednostavno spojiti na servis pozivajući \textit{bindService()} metode nakon čega dobivaju sučelje preko kojega mogu početi pozive metoda na servisu. Kako se operacijski sustav brine za uništavanje vezanih servisa kada ne postoji niti jedna komponenta vezana za njega, znači da nije potrebno ručno zaustavljanje ovakvog servisa.
+Kako bi kreirali vezani servis, mora se ostvariti metoda \textit{onBind()} ugrađenog poziva gdje se vraća \textit{IBinder} koji služi kao sučelje za komunikaciju sa samim servisom. Nakon toga ostale se komponente mogu jednostavno spojiti na servis pozivom metode \textit{bindService()} nakon čega dobivaju sučelje preko kojega mogu početi pozive metoda na servisu. Kako se operacijski sustav brine za uništavanje vezanih servisa kada ne postoji niti jedna komponenta vezana za njega, znači da nije potrebno ručno zaustavljanje ovakvog servisa.
  
 \section{Dretve}
 \paragraph{}
 Pri pokretanju aplikacije, sustav kreira glavnu dretvu odgovornu za izvršavanje\linebreak programa pod nazivom "glavna dretva" \textit{(engl. main thread)}. Ova dretva je praktički najvažnija u cijeloj aplikaciji jer delegira slanje svih događaja \textit{(engl. event)} na odgovarajuće elemente grafičkog sučelja \textit{(engl. User Interface, UI)}, uključujući i događaje vezane za crtanje. Također u toj se dretvi odvija interakcija s ostalim komponentama iz \textit{Android UI toolkit} paketa, te kao takva, glavna se dretva ponekad naziva i "UI" dretva.\\
 
-Sve komponente aplikacije koje se vrte u istom procesu pokreću se na UI dretvi i sustav nikada ne kreira nove dretve za svaku instancu komponente. Isto tako i sistemski pozivi aplikacije, kao i metode za odgovor na sistemski ugrađeni poziv uvijek se pokreću na UI dretvi procesa. Na primjer, kada korisnik pritisne gumb na ekranu, aplikacija šalje događaj dodira elementu, nakon čega se isti postavi u kliknuto stanje, te invalidira događaj u redu događaja \textit{(engl. event queue)}. Nakon toga UI dretva miče događaj iz reda i obavještava element da se promijenio i da se mora ponovno nacrtati.\\
+Sve komponente aplikacije koje se obavljaju u istom procesu pokreću se na UI dretvi i sustav nikada ne kreira nove dretve za svaku instancu komponente. Isto tako i sistemski pozivi aplikacije, kao i metode za odgovor na sistemski ugrađeni poziv uvijek se pokreću na UI dretvi procesa. Na primjer, kada korisnik pritisne gumb na ekranu, aplikacija šalje događaj dodira elementu, nakon čega se isti postavi u kliknuto stanje, te invalidira događaj u redu događaja \textit{(engl. event queue)}. Nakon toga UI dretva miče događaj iz reda i obavještava element da se promijenio i da se mora ponovno nacrtati.\\
 
 Ovakav jednodretveni model ima i jednu jako veliku manu. U slučaju da aplikacija obrađuje jako veliku količinu posla kao rezultat neke akcije od strane korisnika, to može rezultirati jako lošim performansama aplikacije ako se to napravi na krivi način. Kada bi se sav taj posao odrađivao na UI dretvi, ona bi automatski postala blokirana dok se posao ne obavi do kraja, što bi značilo nemogućnost slanja nikakvih daljnjih događaja, uključujući i one za crtanje. Gledajući iz perspektive korisnika, aplikacija će se smrznut i prestati reagirati, a ukoliko bude smrznuta više od 5 sekundi, Android će pokazati korisniku poznati \textit{"application not responding" (ANR)} dijalog. Korisnik se tada može odlučiti na ubijanje aplikacije i pobrisati ju s uređaja ako je nezadovoljan istom. Ovakva situacija bi se svakako trebala izbjeći pod svaku cijenu.\\
 
@@ -466,8 +463,8 @@ Još jedan jako bitan detalj je da \textit{Android UI toolkit} nije dretveno osi
 Iz ovog osnovnog pogleda na dretve u Androidu okruženju izašla su dva zlatna pravila za ovakav jednodretveni model kojih bi se svatko trebao držati:
 
 \begin{enumerate}
-\item Nikada ne blokirati UI dretvu
-\item Nikada ne pristupati \textit{Android UI toolkit} elementima od izvana UI dretve
+\item Nikada ne blokirati UI dretvu.
+\item Nikada ne pristupati \textit{Android UI toolkit} elementima od izvana UI dretve.
 \end{enumerate}
 
 \subsection{Radna dretva}
@@ -494,14 +491,13 @@ public void onClick(View v) {
 Na prvi pogled sve se čini ok, napravila se nova dretva koja onda dohvaća sliku i stavi je u \textit{imageView} kako je i planirano. Međutim, kada se sjetimo drugog pravila dretvi koje govori da se nikako ne smije pristupati \textit{Android UI toolkit} elementima izvan UI dretve, uviđamo da se upravo to događa u ovoj novoj radnoj dretvi. Ovaj kod može rezultirati neočekivanim ponašanjem aplikacije i samim time se produljuje i otežava razvoj aplikacije i lovljenje bugova.\\
 
 Ovo je poznati problem i Android nudi nekoliko rješenja:
-\paragraph{•}
-\textit{Activity.runOnUiThread(Runnable action)}
-\paragraph{•}
-\textit{View.post(Runnable action)}
-\paragraph{•}
-\textit{View.postDelay(Runnable action, long delay)
-}\\
 
+\begin{itemize}
+\item[•] \textit{Activity.runOnUiThread(Runnable action)}
+\item[•] \textit{View.post(Runnable action)}
+\item[•] \textit{View.postDelay(Runnable action, long delay)}
+\end{itemize}
+\paragraph{}
 Metode primaju \textit{Runnable} akciju koja će se izvršiti na UI dretvi i isto tako se može dodati parametar \textit{delay} tipa \textit{long} koji predstavlja milisekunde čekanja prije nego se akcija izvrši na UI dretvi.\newpage 
 Navedeni primjer može odmah popraviti:
 
@@ -532,26 +528,26 @@ Isto tako može se vidjeti da kako se povećava kompleksnost operacija, ovakvo r
 
 \subsection{klasa \textit{AsyncTask}}
 \paragraph{}
-Klasa \textit{AsyncTask} omogućuje i olakšava pravilno korištenje UI dretve. Ona služi za izvršavanje blokirajućih operacija u pozadini i prikazivanje rezultata na UI dretvi bez potrebe da sami manipuliramo dretvama i rukovateljima. Stoga je \textit{AsyncTask} zapravo pomoćna klasa vezana za \textit{Thread} i \textit{Handler} i nije zamišljen kao radno okruženje za baratanje dretvama. Idealno se koristi za operacije do svega par sekundi, a za sve ostale stvari koje bi se trebale duže odrađivati u pozadini koriste se API koji se nalaze u \verb|java.util.concurrent| paketu (npr. \textit{Executor, ThreadPoolExecutor, FutureTask}).\\
+Klasa \textit{AsyncTask} omogućuje i olakšava pravilno korištenje UI dretve. Ona služi za izvršavanje blokirajućih operacija u pozadini i prikazivanje rezultata na UI dretvi bez potrebe da sami manipuliramo dretvama i rukovateljima. Stoga je \textit{AsyncTask} zapravo pomoćna klasa vezana za \textit{Thread} i \textit{Handler} i nije zamišljen kao radno okruženje za upravljanje dretvama. Idealno se koristi za operacije do svega par sekundi, a za sve ostale stvari koje bi se trebale duže odrađivati u pozadini koriste se API koji se nalaze u \verb|java.util.concurrent| paketu (npr. \textit{Executor, ThreadPoolExecutor, FutureTask}).\\
 
 Svaki \textit{AsyncTask} definiran je s tri generička tipa \textit{Params, Progress i Result}, i dijeli se u četiri koraka izvršavanja, a to su \textit{onPreExecute(), doInBackground(), onProgressUpdate() i onPostExecute().}\\
 
-Pri korištenju \textit{AsyncTask} klase, prvo se radi odgovarajuća subklasa gdje se onda implementira doInBackground() metoda koja se zatim pokreće u bazenu dretvi \textit{(engl. thread pool)} u pozadini. Osvježavanje UI elemenata radi se u \textit{onPostExecute()} metodi gdje dobivamo rezultat iz \textit{doInBackground()} dijela, te pokreće promjene na UI dretvi. Nakon implementacije \textit{AsyncTask} se pokreće metodom \textit{execute()}.\\
+Pri korištenju klase \textit{AsyncTask}, prvo se radi odgovarajuća subklasa gdje se onda ostvaruje metoda doInBackground() koja se zatim pokreće u bazenu dretvi \textit{(engl. thread pool)} u pozadini. Osvježavanje UI elemenata radi se u metodi \textit{onPostExecute()} gdje dobivamo rezultat iz \textit{doInBackground()} dijela, te pokreće promjene na UI dretvi.\linebreak Nakon ostvarenja, \textit{AsyncTask} se pokreće metodom \textit{execute()}.\\
 
 Nadalje, mora se obratiti pažnja na sljedeće stvari:
-\paragraph{•}
-Tipove parametara možemo sami specificirati pomoću generičkih tipova \textit{(engl. generics)}
-\paragraph{•}
-\textit{doInBackground()} se automatski pokreće na radnoj dretvi
-\paragraph{•}
-\textit{onPreExecute(), onPostExecute(), i onProgressUpdate()} se pokreću na UI dretvi
-\paragraph{•}
-vrijednost dobivena u \textit{doInBackground()} predaje se \textit{onPostExecute()} metodi
-\paragraph{•}
-\textit{publishProgress()} se može pozvati bilo kada u \textit{doInBackground()} kako bi se okinuo \textit{onProgressUpdate()} na UI dretvi
-\paragraph{•}
-prekid izvađanje \textit{AsyncTask} klase može se napraviti bilo kada iz bilo koje dretve\newpage
 
+\begin{itemize}
+\item[•] \textit{Activity.runOnUiThread(Runnable action)}
+\item[•] \textit{View.post(Runnable action)}
+ \textit{View.postDelay(Runnable action, long delay)}
+
+\item[•] Tipove parametara možemo sami specificirati pomoću generičkih tipova \textit{(engl. generics)}
+\item[•] \textit{doInBackground()} se automatski pokreće na radnoj dretvi
+\item[•] \textit{onPreExecute(), onPostExecute(), i onProgressUpdate()} se pokreću na UI dretvi
+\item[•] vrijednost dobivena u \textit{doInBackground()} predaje se \textit{onPostExecute()} metodi
+\item[•] \textit{publishProgress()} se može pozvati bilo kada u \textit{doInBackground()} kako bi se okinuo \textit{onProgressUpdate()} na UI dretvi
+\item[•] prekid izvađanje \textit{AsyncTask} klase može se napraviti bilo kada iz bilo koje dretve\newpage
+\end{itemize}
 \paragraph{}
 Za ilustraciju, primijenit ćemo \textit{AsyncTask} na prethodni primjer:
 
@@ -585,15 +581,15 @@ Ovdje se vidi puno jednostavniji stil kodiranja, a i UI dretva je u potpunosti s
 \chapter{Sinkronizacijski mehanizmi}
 \section{Sinkronizacija procesa semaforima}
 \paragraph{}
-Sinkronizacija procesa se uglavnom obavlja semaforima. Ostali mehanizmi (čija primarna namjena nije sinkronizacija, poput redova poruka, cjevovoda, i sl.) rijetko se koriste za sinkronizaciju procesa.\\
+Sinkronizacija procesa se uglavnom obavlja monitorima, a za jednostavnije probleme sinkronizacije koristimo semafore. Ostali mehanizmi (čija primarna namjena nije sinkronizacija, poput redova poruka, cjevovoda, i sl.) rijetko se koriste za sinkronizaciju procesa.\\
 
 Semafor je mehanizam koji sprečava da dva ili više procesa pristupaju zajedničkom sredstvu istovremeno. Binarni semafor ima dva stanja: propusno i nepropusno. Opći semafor ima beskonačan broj stanja (ili barem vrlo velik). To je brojač koji se smanjuje za jedan kada se zahtijeva semafor, a povećava se za jedan kada se oslobađa. Ako je na nuli, a proces zahtijeva semafor, tada taj proces mora čekati dok drugi proces ne poveća vrijednost semafora. Semafor u UNIX-u (System V) ne može imati negativnu vrijednost iako su teoretski ostvarivi i semafori kod kojih bi bile dozvoljene i negativne vrijednosti. Upotreba semafora se obično razmatra kroz dvije jednostavne operacije: "dohvati" \textit{(engl. acquire)} i "otpusti" \textit{(engl. release)} ili "čekaj" \textit{(engl. wait)} i "postavi" \textit{(engl. signal)}.\\
 
-Android radno okruženje nudi klasu \textit{Semaphore}, tipa općeg semafora, koja zapravo konceptualno barata setom dozvola. Svaki \textit{acquire()} poziv blokira pristup ako je potrebno sve dok ne dobije dozvolu od semafora, koju potom uzima. S druge strane imamo \textit{release()} poziv koji vraća dozvolu semaforu i time potencijalno oslobađa blokiranog pozivatelja dozvole.\\
+Android radno okruženje nudi klasu \textit{Semaphore}, tipa općeg semafora, koja zapravo konceptualno upravlja setom dozvola. Svaki \textit{acquire()} poziv blokira pristup ako je potrebno sve dok ne dobije dozvolu od semafora, koju potom uzima. S druge strane imamo \textit{release()} poziv koji vraća dozvolu semaforu i time potencijalno oslobađa blokiranog pozivatelja dozvole.\\
 
-Ako inicijaliziramo semafor na veličinu 1, on postaje lokot međusobnog isključivanja \textit{(engl. mutual exclusion lock)}, odnosno binarni semafor, jer ima samo dva stanja 0 ili 1 dozvola je dostupna u svakom trenutku. Kada se koristi na ovaj način, binarni semafor dobiva specifično svojstvo (za razliku od ostalih implementacija lokota \textit{(engl. Lock)}) da se može otpustiti iz bilo koje dretve koja nije vlasnik, jer semafori nemaju vlasnika. Ovo zna biti jako korisno kod oporavljanja iz stanja zapetljanih lokota \textit{(engl. deadlock)}.\\
+Ako inicijaliziramo semafor na veličinu 1, on postaje lokot međusobnog isključivanja \textit{(engl. mutual exclusion lock)}, odnosno binarni semafor, jer ima samo dva stanja 0 ili 1 dozvola je dostupna u svakom trenutku. Kada se koristi na ovaj način, binarni semafor dobiva specifično svojstvo (za razliku od ostalih ostvarenja lokota \textit{(engl. Lock)}) da se može otpustiti iz bilo koje dretve koja nije vlasnik, jer semafori nemaju vlasnika. Ovo zna biti jako korisno kod oporavljanja iz stanja potpunog zastoja \textit{(engl. deadlock)}.\\
 
-Također, konstruktor osim broja dozvola prima i \textit{fairness} parameter. Kada je postavljen na \textit{false} semafor ne garantira nikakvim poretkom kojim će dretve dobivati dozvole. To bi značilo da jedna dretva pozivom na \textit{acquire()} može dobiti dozvolu prije dretve koja već čeka na istu. Kada je postavljen na \textit{true} semafor garantira točan poredak dobivanja dozvola onim redom kako su ih dretve zatražile (FIFO).\\
+Također, konstruktor osim broja dozvola prima i parametar \textit{fairness}. Kada je postavljen na \textit{false} semafor ne garantira nikakvim poretkom kojim će dretve dobivati dozvole. To bi značilo da jedna dretva pozivom na \textit{acquire()} može dobiti dozvolu prije dretve koja već čeka na istu. Kada je postavljen na \textit{true} semafor garantira točan poredak dobivanja dozvola onim redom kako su ih dretve zatražile (FIFO).\\
 
 U principu bi se semafori trebali inicijalizirati kao pošteni, kako bi izbjegli predugo čekanje jedne dretve na resurs.
 
@@ -626,7 +622,7 @@ Kako bi se optimiziralo vrijeme čekanja na pristup resursu, klasa \textit{ReadW
 Time omogućava veći nivo paralelnosti izvođenja i u teoriji dovodi do velikog poboljšanja u performansama programa, osim u slučaju kada su česti zahtjevi za pisanjem.
 
 \subsection{Uvjetne varijable}
-Klasa Condition daje nam svojstva uvjetne varijable. Ona pruža metode monitora (\textit{wait(), notify(), notifyAll()}) u jedinstvenim objektima i time imamo mogućnost sadržavanja više čekaj-odobri (engl. wait-set) uvijeta koje onda možemo spojiti sa našom implementacijom lokota. 
+Klasa Condition daje svojstva uvjetne varijable. Ona pruža metode monitora (\textit{wait(), notify(), notifyAll()}) u jedinstvenim objektima i time imamo mogućnost sadržavanja više čekaj-odobri (engl. wait-set) uvijeta koje onda možemo spojiti sa našim ostvarenjem lokota. 
 Ove varijable se koriste kako bi zaustavili izvođenje jedne dretve (\textit{čekaj}), sve dok druga dretva ne odobri nastavak rada na temelju nekog zadovoljenog uvjeta(\textit{odobri}).
 Svaka instance \textit{Condition} klase povezuje se na instance lokota pomoću metode \textit{newCondition()}.
 
@@ -636,12 +632,12 @@ Dekkerov je algoritam prvo pravo rješenje problema međusobnog isključivanja. 
 
 U svrhu demonstracije algoritma na Android okruženju pokazat će se primjer dvije dretve koje rade neki posao od pet koraka i ispisuju svaki korak na ekran u \textit{TextView}. Biti će nam potrebne zastavice \textit{wantsToEnter} koje označavaju namjeru dretve za ulazak u kritični odsječak, te varijabla \textit{turn} koja označava koja od dretvi je na redu.\newpage
 
-Za početak, implementirati ćemo metode ulaska i izlaska iz kritičnog odsječka.
+Za početak, ostvariti ćemo metode ulaska i izlaska iz kritičnog odsječka.
 
 \begin{figure}[ht!]
 %\includegraphics[width=140mm]{img/android-debug-monitor.png}
 \begin{lstlisting}[
-    basicstyle=\small , %or \small or \footnotesize etc.
+    basicstyle=\footnotesize , %or \small or \footnotesize etc.
 ]
     private void enterCriticalSection() {
         wantsToEnter[id] = true;
@@ -671,12 +667,12 @@ Za početak, implementirati ćemo metode ulaska i izlaska iz kritičnog odsječk
 
 Kada dretva želi ući u kritični odsječak a nije njezin red, ona radi prazni posao \textit{(engl. busy wait)} i čeka svoj dolazak na red. Pri izlasku dretve iz kritičnog odsječka, red se prebacuje na drugu dretvu i ona automatski uzima kritični odsječak za svoj posao.\newpage
 
-Nakon toga se radi implementacija \textit{Runnable} klase koja predstavlja posao za radnu dretvu.
+Nakon toga se radi ostvarenje \textit{Runnable} klase koja predstavlja posao za radnu dretvu.
 
 \begin{figure}[ht!]
 %\includegraphics[width=140mm]{img/android-debug-monitor.png}
 \begin{lstlisting}[
-    basicstyle=\small , %or \small or \footnotesize etc.
+    basicstyle=\footnotesize , %or \small or \footnotesize etc.
 ]
 public class DekkerRunnable implements Runnable {
     public static volatile int turn = 0;
@@ -704,18 +700,18 @@ public class DekkerRunnable implements Runnable {
     }
 
 \end{lstlisting}
-\caption{Implementacija \textit{DekkerRunnable}.}
+\caption{Ostvarenje \textit{DekkerRunnable}.}
 \label{overflow}
 \end{figure}
 
-Ovdje je dobro za uočiti da se \textit{TextView} osvježava sa novim podacima u glavnoj UI dretvi.\newpage
+Ovdje je dobro uočiti da se \textit{TextView} osvježava sa novim podacima u glavnoj UI dretvi.\newpage
 
-Na kraju se rade dvije radne dretve sa instancama \textit{DekkerRunnable} implementacije i koje onda rade svoj posao i međusobno se isključuju. To će se pokretati na klik gumba.
+Na kraju se rade dvije radne dretve sa instancama \textit{DekkerRunnable} ostvarenja i koje onda rade svoj posao i međusobno se isključuju. To se pokreće na klik gumba.
 
 \begin{figure}[ht!]
 %\includegraphics[width=140mm]{img/android-debug-monitor.png}
 \begin{lstlisting}[
-    basicstyle=\small , %or \small or \footnotesize etc.
+    basicstyle=\footnotesize , %or \small or \footnotesize etc.
 ]
             public void onClick(View view) {
                 Thread thread1 = new Thread(new DekkerRunnable(0, outputTextView));
@@ -733,7 +729,7 @@ Nakon klika za pokretanje radnih dretvi one će ispisivati svoj posao na ekran k
 \begin{figure}[ht!]
 \centering
 \includegraphics[width=70mm]{img/DekkerActivity.png}
-\caption{Dekkerov algoritam.}
+\caption{Ispis programa koji je sinkroniziran Dekkerovim algoritmom.}
 \label{overflow}
 \end{figure}
 
@@ -743,15 +739,15 @@ Lamportov je algoritam rješenje problema međusobnog isključivanja između vi�
 
 U svrhu demonstracije algoritma na Android okruženju pokazat će se primjer tijeka rezervacije stolova u nekom restoranu. Sveke sekunde tri dretve slučajno će odabirati jedan od pet stolova. Nakon odabira dretva ulazi u kritični odsječak te ponovo provjerava je li odabrani stol slobodan. Ako jest, označava stol zauzetim i izlazi iz kritičnog odsječka. U oba slučaja, nakon obavljene operacije ispisuje trenutno stanje svih stolova te podatke o obavljenoj rezervaciji na ekran u \textit{TextView}. Taj postupak ponavljat će se sve dok više nema slobodnih stolova.\\
 
-Biti će nam potrebne varijable \textit{entering} koja označava namjeru dretve za ulazak u kritični odsječak, te varijabla \textit{number} koja redni broj u redu za ulazak.\newpage
+U algoritmu se koristi varijabla \textit{entering} koja označava namjeru dretve za ulazak u kritični odsječak, te varijabla \textit{number} koja redni broj u redu za ulazak.\newpage
 
 
-Za početak, implementirati ćemo metode ulaska i izlaska iz kritičnog odsječka.
+Za početak, ostvaruju se metode ulaska i izlaska iz kritičnog odsječka.
 
 \begin{figure}[ht!]
 %\includegraphics[width=140mm]{img/android-debug-monitor.png}
 \begin{lstlisting}[
-    basicstyle=\small , %or \small or \footnotesize etc.
+    basicstyle=\footnotesize , %or \small or \footnotesize etc.
 ]
     private void enterCriticalSection() throws InterruptedException {
         entering[id] = true;
@@ -779,12 +775,12 @@ Za početak, implementirati ćemo metode ulaska i izlaska iz kritičnog odsječk
 
 Pri ulasku dretve u kritični odsječak, ona prvo dobiva broj za red, nakon čega čeka i obavlja prazan posao sve dok ostale dretve sa manjim brojem ne obave svoj posao do kraja. Pri izlasku dretve iz kritičnog odsječka broj dretve se invalidira tako da ostale koje čekaju u redu mogu nastaviti.\newpage
 
-Nakon toga se radi implementacija \textit{Runnable} klase koja predstavlja posao za radnu dretvu.
+Nakon toga se radi ostvarenje \textit{Runnable} klase koja predstavlja posao za radnu dretvu.
 
 \begin{figure}[ht!]
 %\includegraphics[width=140mm]{img/android-debug-monitor.png}
 \begin{lstlisting}[
-    basicstyle=\small , %or \small or \footnotesize etc.
+    basicstyle=\footnotesize , %or \small or \footnotesize etc.
 ]
 public class LamportRunnable implements Runnable {
     public static volatile boolean[] entering = new boolean[THREADS_NUMBER];
@@ -819,12 +815,12 @@ public class LamportRunnable implements Runnable {
         }
 	}
 \end{lstlisting}
-\caption{Implementacija \textit{LamportRunnable}.}
+\caption{Ostvarenje \textit{LamportRunnable}.}
 \label{overflow}
 \end{figure}
 \newpage
 
-Na kraju se rade tri radne dretve sa instancama \textit{LamportRunnable} implementacije i koje onda počinju birati stolove sa međusobnim isključivanjem sve dok se ne popune svi stolovi. To će se pokretati na klik gumba.
+Na kraju se rade tri radne dretve sa instancama \textit{LamportRunnable} ostvarenja i koje onda počinju birati stolove sa međusobnim isključivanjem sve dok se ne popune svi stolovi. To se pokreće na klik gumba.
 
 \begin{figure}[ht!]
 %\includegraphics[width=140mm]{img/android-debug-monitor.png}
@@ -844,18 +840,18 @@ Na kraju se rade tri radne dretve sa instancama \textit{LamportRunnable} impleme
 \label{overflow}
 \end{figure}
 
-Nakon klika za pokretanje radnih dretvi one će ispisivati svoj posao na ekran kao što  se vidi na sljedećoj slici.
+Nakon klika za pokretanje radnih dretvi one ispisuju svoj posao na ekran kao što  se vidi na sljedećoj slici.
 
 \begin{figure}[ht!]
 \centering
 \includegraphics[width=65mm]{img/LamportActivity.png}
-\caption{Dekkerov algoritam.}
+\caption{Ispis programa koji je sinkroniziran Lamportovim algoritmom.}
 \label{overflow}
 \end{figure}
 
 \chapter{Zaključak}
 \paragraph{}
-Iz svega navedenog može se zaključiti da je Android jako kompleksna i delikatna platforma, zbog čega svaki korak izrade aplikacije za takav sustav predstavlja veliki izazov i odgovornost, jer svaka mala greška može rezultirati jako destruktivno, pa čak i gubljenje krajnjih korisnika što se nikako ne bi smjelo događati. Memorija je ovdje jedan od največih problema i kod razvoja aplikacija jako je krucijalno da se razvijatelji informiraju o Android operacijskom sustavu i njegovim upravljanjem memorijom, procesima i dretvama, te da se upoznaju sa dobrim praksama koje su drugi ljudi stekli iskustvom.
+Iz svega navedenog može se zaključiti da je Android jako složena platforma, zbog čega svaki korak izrade aplikacije za takav sustav predstavlja veliki izazov i odgovornost, jer svaka mala greška može rezultirati jako destruktivno, pa čak i gubljenje krajnjih korisnika što se nikako ne bi smjelo događati. Memorija je ovdje jedan od največih problema i kod razvoja aplikacija jako je krucijalno da se razvijatelji informiraju o Android operacijskom sustavu i njegovim upravljanjem memorijom, procesima i dretvama, te da se upoznaju sa dobrim praksama koje su drugi ljudi stekli iskustvom.
 
 \bibliography{literatura}
 \bibliographystyle{fer}
@@ -867,7 +863,7 @@ Iz svega navedenog može se zaključiti da je Android jako kompleksna i delikatn
 \nocite{wiki:paging}
 
 \begin{sazetak}
-U radu će se proučiti i opisati načini ostvarenja višezadaćnog rada u Android okruženju uz pomoć dretvi i procesa. Navesti će se i opisati sikronizacijski mehanizmi, te proučiti način upravljanja spremnikom. Uz to dati će se uvid u rješenja praktičnog dijela što uključuje Dekkerov i Lamportov algoritam, te simulacija straničenja uz FIFO strategiju izbacivanja stranica.
+U radu pručavaju i opisuju načini ostvarivanja višezadaćnog rada u Android okruženju uz pomoć dretvi i procesa. Navode se i opisuju sikronizacijski mehanizmi, te proučava način upravljanja spremnikom. Uz to daje se uvid u rješenja praktičnog dijela, što uključuje Dekkerov i Lamportov algoritam, te simulacija straničenja uz FIFO strategiju izbacivanja stranica.
 
 \kljucnerijeci{Memorija, Android, dretve, procesi, Dekker, Lamport, sinkronizacija}
 \end{sazetak}
@@ -875,7 +871,7 @@ U radu će se proučiti i opisati načini ostvarenja višezadaćnog rada u Andro
 % TODO: Navedite naslov na engleskom jeziku.
 \engtitle{Multitasking, synchronization and memory management in Android operating system}
 \begin{abstract}
-This thesis will cover multithreading in Android framework focusing on threads and processes. Also it will mention and describe synchronization mechanisms and look deep into memory management. After that it will explain through practical solutions which includes Dekker algorithm, Lamport algorithm, and paging simulation with FIFO strategy.
+This thesis covers multithreading in Android framework focusing on threads and processes. Also it mentions and describes synchronization mechanisms and looks deep into memory management. Furthermore it explains practical solutions which includes Dekker algorithm, Lamport algorithm, and paging simulation with FIFO strategy.
 
 \keywords{Memory, Android, threads, processes, Dekker, Lamport, synchronization}
 \end{abstract}
